@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Calendar } from "@/components/ui/calendar"
-import { ErrorLogsViewer } from "@/components/error-logs-viewer"
 import {
   Users,
   FileText,
@@ -600,7 +599,7 @@ function AdminDashboardNew() {
 
       {/* Enhanced Main Content Tabs */}
       <Tabs defaultValue="pipeline" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="quotes">Quotes</TabsTrigger>
           <TabsTrigger value="projects">Projects</TabsTrigger>
@@ -609,6 +608,7 @@ function AdminDashboardNew() {
           <TabsTrigger value="staff">Staff</TabsTrigger>
           <TabsTrigger value="cms">CMS</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pipeline" className="space-y-4">
@@ -1091,100 +1091,107 @@ function AdminDashboardNew() {
         <TabsContent value="settings" className="space-y-4">
           <div className="grid grid-cols-1 gap-6">
             {/* Error Logs Section */}
-            <ErrorLogsViewer />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Business Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Company Name</Label>
+                  <Input
+                    value={siteSettings.companyName}
+                    onChange={(e) => setSiteSettings({ ...siteSettings, companyName: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input
+                      value={siteSettings.phone}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input
+                      value={siteSettings.email}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, email: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Address</Label>
+                  <Textarea
+                    value={siteSettings.address}
+                    onChange={(e) => setSiteSettings({ ...siteSettings, address: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Service Areas</Label>
+                  <Input placeholder="Enter cities separated by commas" />
+                </div>
+                <Button className="w-full bg-green-700 hover:bg-green-800">Save Settings</Button>
+              </CardContent>
+            </Card>
 
-            {/* Existing Settings Content */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Business Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Company Name</Label>
-                    <Input
-                      value={siteSettings.companyName}
-                      onChange={(e) => setSiteSettings({ ...siteSettings, companyName: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Phone</Label>
-                      <Input
-                        value={siteSettings.phone}
-                        onChange={(e) => setSiteSettings({ ...siteSettings, phone: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input
-                        value={siteSettings.email}
-                        onChange={(e) => setSiteSettings({ ...siteSettings, email: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Address</Label>
-                    <Textarea
-                      value={siteSettings.address}
-                      onChange={(e) => setSiteSettings({ ...siteSettings, address: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Service Areas</Label>
-                    <Input placeholder="Enter cities separated by commas" />
-                  </div>
-                  <Button className="w-full bg-green-700 hover:bg-green-800">Save Settings</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Globe className="w-5 h-5" />
-                    SEO Management
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Page Title</Label>
-                    <Input
-                      value={seoSettings.pageTitle}
-                      onChange={(e) => setSeoSettings({ ...seoSettings, pageTitle: e.target.value })}
-                      placeholder="Professional Epoxy Flooring | Crafted Surface Solutions"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Meta Description</Label>
-                    <Textarea
-                      value={seoSettings.metaDescription}
-                      onChange={(e) => setSeoSettings({ ...seoSettings, metaDescription: e.target.value })}
-                      placeholder="Transform your space with professional epoxy flooring solutions..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Keywords</Label>
-                    <Input
-                      value={seoSettings.keywords}
-                      onChange={(e) => setSeoSettings({ ...seoSettings, keywords: e.target.value })}
-                      placeholder="epoxy flooring, garage floors, commercial flooring"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Open Graph Title</Label>
-                    <Input
-                      value={seoSettings.ogTitle}
-                      onChange={(e) => setSeoSettings({ ...seoSettings, ogTitle: e.target.value })}
-                    />
-                  </div>
-                  <Button className="w-full bg-green-700 hover:bg-green-800">Update SEO</Button>
-                </CardContent>
-              </Card>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="w-5 h-5" />
+                  SEO Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Page Title</Label>
+                  <Input
+                    value={seoSettings.pageTitle}
+                    onChange={(e) => setSeoSettings({ ...seoSettings, pageTitle: e.target.value })}
+                    placeholder="Professional Epoxy Flooring | Crafted Surface Solutions"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Meta Description</Label>
+                  <Textarea
+                    value={seoSettings.metaDescription}
+                    onChange={(e) => setSeoSettings({ ...seoSettings, metaDescription: e.target.value })}
+                    placeholder="Transform your space with professional epoxy flooring solutions..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Keywords</Label>
+                  <Input
+                    value={seoSettings.keywords}
+                    onChange={(e) => setSeoSettings({ ...seoSettings, keywords: e.target.value })}
+                    placeholder="epoxy flooring, garage floors, commercial flooring"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Open Graph Title</Label>
+                  <Input
+                    value={seoSettings.ogTitle}
+                    onChange={(e) => setSeoSettings({ ...seoSettings, ogTitle: e.target.value })}
+                  />
+                </div>
+                <Button className="w-full bg-green-700 hover:bg-green-800">Update SEO</Button>
+              </CardContent>
+            </Card>
           </div>
+        </TabsContent>
+
+        {/* Error Logs Tab */}
+        <TabsContent value="logs" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Error Logs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500">Error logs functionality temporarily disabled for debugging.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
