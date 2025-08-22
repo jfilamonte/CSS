@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 
 async function requireAdmin() {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
   const {
     data: { user },
     error: authError,
@@ -17,13 +21,13 @@ async function requireAdmin() {
     throw new Error("Unauthorized")
   }
 
-  return { ...user, role: profile.role }
+  return { ...user, role: profile.role, supabase }
 }
 
 export async function GET(request: NextRequest) {
   try {
     console.log("[v0] SEO Settings API - GET request started")
-    await requireAdmin()
+    const { supabase } = await requireAdmin()
 
     const { data: seoSettings, error: dbError } = await supabase.from("seo_settings").select("*").single()
 
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     console.log("[v0] SEO Settings API - PUT request started")
-    await requireAdmin()
+    const { supabase } = await requireAdmin()
     const data = await request.json()
 
     const { data: updatedSettings, error: updateError } = await supabase

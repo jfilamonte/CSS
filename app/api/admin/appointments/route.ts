@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 
 async function requireAdmin(request: NextRequest) {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
   const {
     data: { user },
     error: authError,
@@ -17,13 +21,13 @@ async function requireAdmin(request: NextRequest) {
     throw new Error("Unauthorized")
   }
 
-  return { ...user, role: profile.role }
+  return { ...user, role: profile.role, supabase }
 }
 
 export async function GET(request: NextRequest) {
   try {
     console.log("[v0] Appointments API - GET request started")
-    await requireAdmin(request)
+    const { supabase } = await requireAdmin(request)
 
     const { data: appointments, error: dbError } = await supabase
       .from("appointments")
@@ -51,7 +55,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log("[v0] Appointments API - POST request started")
-    await requireAdmin(request)
+    const { supabase } = await requireAdmin(request)
     const data = await request.json()
 
     const { error: insertError } = await supabase.from("appointments").insert([data])

@@ -1,9 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 
 export async function GET(request: NextRequest) {
   try {
     console.log("[v0] Staff API - GET request started")
+
+    const cookieStore = cookies()
+    const supabase = createClient(cookieStore)
 
     // Get user from Supabase
     const {
