@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { Star, ArrowRight, Shield, Clock, Award, Phone, Mail, User, LogOut, LogIn } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase/client"
+import { useState } from "react"
+import { useAuth } from "@/components/auth-provider"
 
 export default function HomePage() {
   const [formData, setFormData] = useState({
@@ -19,35 +19,7 @@ export default function HomePage() {
     details: "",
   })
 
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    // Get initial session
-    const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
-    }
-
-    getSession()
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-  }
+  const { user, loading, signOut, isAdmin } = useAuth()
 
   const handleCallNow = () => {
     window.location.href = "tel:+15551234567"
@@ -116,7 +88,7 @@ export default function HomePage() {
                       {user.user_metadata?.full_name || user.email?.split("@")[0] || "Account"}
                     </span>
                   </div>
-                  {user.user_metadata?.role === "admin" && (
+                  {isAdmin && (
                     <Link href="/admin">
                       <Button
                         variant="outline"
@@ -130,7 +102,7 @@ export default function HomePage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleSignOut}
+                    onClick={signOut}
                     className="border-gray-300 text-gray-700 hover:bg-gray-50 bg-transparent"
                   >
                     <LogOut className="w-4 h-4 mr-1" />
