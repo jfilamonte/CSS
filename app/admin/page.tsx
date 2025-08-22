@@ -29,6 +29,7 @@ import {
   Settings,
   ImageIcon,
   AlertCircle,
+  Eye,
 } from "lucide-react"
 
 interface User {
@@ -37,6 +38,10 @@ interface User {
   first_name: string
   last_name: string
   phone: string
+  address?: string
+  city?: string
+  state?: string
+  zip_code?: string
   role: string
   is_active: boolean
   created_at: string
@@ -53,6 +58,7 @@ interface Quote {
   total_cost: number
   created_at: string
   quote_data: any
+  user_id?: string
 }
 
 interface Project {
@@ -69,19 +75,6 @@ interface Project {
   created_at: string
 }
 
-interface Customer {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string
-  address: string
-  city: string
-  state: string
-  zip_code: string
-  created_at: string
-}
-
 export default function AdminPortal() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -89,19 +82,19 @@ export default function AdminPortal() {
 
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [projects, setProjects] = useState<Project[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [userQuotes, setUserQuotes] = useState<Quote[]>([])
 
   // Modal states
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
-  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false)
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
+  const [isUserDetailModalOpen, setIsUserDetailModalOpen] = useState(false)
 
   // Edit states
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [editingUser, setEditingUser] = useState<User | null>(null)
 
   const generateUUID = () => {
@@ -172,17 +165,6 @@ export default function AdminPortal() {
       if (projectsError) throw projectsError
       setProjects(projectsData || [])
 
-      // Load customers (users with customer role)
-      const { data: customersData, error: customersError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("role", "customer")
-        .order("created_at", { ascending: false })
-
-      if (customersError) throw customersError
-      setCustomers(customersData || [])
-
-      // Load all users
       const { data: usersData, error: usersError } = await supabase
         .from("users")
         .select("*")
@@ -195,6 +177,28 @@ export default function AdminPortal() {
     } catch (error) {
       console.error("[v0] Error loading data:", error)
     }
+  }
+
+  const loadUserQuotes = async (userId: string) => {
+    try {
+      const { data: userQuotesData, error } = await supabase
+        .from("quotes")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+      setUserQuotes(userQuotesData || [])
+    } catch (error) {
+      console.error("[v0] Error loading user quotes:", error)
+      setUserQuotes([])
+    }
+  }
+
+  const handleViewUserDetails = async (user: User) => {
+    setSelectedUser(user)
+    await loadUserQuotes(user.id)
+    setIsUserDetailModalOpen(true)
   }
 
   const handleCreateQuote = async (formData: FormData) => {
@@ -318,9 +322,9 @@ export default function AdminPortal() {
     }
   }
 
-  const handleCreateCustomer = async (formData: FormData) => {
+  const handleCreateUser = async (formData: FormData) => {
     try {
-      const customerData = {
+      const userData = {
         id: generateUUID(),
         first_name: formData.get("first_name") as string,
         last_name: formData.get("last_name") as string,
@@ -330,25 +334,25 @@ export default function AdminPortal() {
         city: formData.get("city") as string,
         state: formData.get("state") as string,
         zip_code: formData.get("zip_code") as string,
-        role: "customer",
+        role: formData.get("role") as string,
         is_active: true,
       }
 
-      const { error } = await supabase.from("users").insert(customerData)
+      const { error } = await supabase.from("users").insert(userData)
 
       if (error) throw error
 
-      console.log("[v0] Customer created successfully")
-      setIsCustomerModalOpen(false)
+      console.log("[v0] User created successfully")
+      setIsUserModalOpen(false)
       await loadAllData()
     } catch (error) {
-      console.error("[v0] Error creating customer:", error)
-      alert("Failed to create customer: " + (error as Error).message)
+      console.error("[v0] Error creating user:", error)
+      alert("Failed to create user: " + (error as Error).message)
     }
   }
 
-  const handleUpdateCustomer = async (formData: FormData) => {
-    if (!editingCustomer) return
+  const handleUpdateUser = async (formData: FormData) => {
+    if (!editingUser) return
 
     try {
       const updateData = {
@@ -360,20 +364,21 @@ export default function AdminPortal() {
         city: formData.get("city") as string,
         state: formData.get("state") as string,
         zip_code: formData.get("zip_code") as string,
+        role: formData.get("role") as string,
         is_active: formData.get("is_active") === "true",
       }
 
-      const { error } = await supabase.from("users").update(updateData).eq("id", editingCustomer.id)
+      const { error } = await supabase.from("users").update(updateData).eq("id", editingUser.id)
 
       if (error) throw error
 
-      console.log("[v0] Customer updated successfully")
-      setIsCustomerModalOpen(false)
-      setEditingCustomer(null)
+      console.log("[v0] User updated successfully")
+      setIsUserModalOpen(false)
+      setEditingUser(null)
       await loadAllData()
     } catch (error) {
-      console.error("[v0] Error updating customer:", error)
-      alert("Failed to update customer: " + (error as Error).message)
+      console.error("[v0] Error updating user:", error)
+      alert("Failed to update user: " + (error as Error).message)
     }
   }
 
@@ -409,19 +414,19 @@ export default function AdminPortal() {
     }
   }
 
-  const handleDeleteCustomer = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this customer?")) return
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this user?")) return
 
     try {
       const { error } = await supabase.from("users").delete().eq("id", id)
 
       if (error) throw error
 
-      console.log("[v0] Customer deleted successfully")
+      console.log("[v0] User deleted successfully")
       await loadAllData()
     } catch (error) {
-      console.error("[v0] Error deleting customer:", error)
-      alert("Failed to delete customer: " + (error as Error).message)
+      console.error("[v0] Error deleting user:", error)
+      alert("Failed to delete user: " + (error as Error).message)
     }
   }
 
@@ -520,11 +525,11 @@ export default function AdminPortal() {
           </Card>
           <Card className="bg-purple-50 border-purple-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-purple-800">Total Customers</CardTitle>
+              <CardTitle className="text-sm font-medium text-purple-800">Total Users</CardTitle>
               <Users className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-900">{customers.length}</div>
+              <div className="text-2xl font-bold text-purple-900">{users.length}</div>
             </CardContent>
           </Card>
           <Card className="bg-orange-50 border-orange-200">
@@ -534,14 +539,14 @@ export default function AdminPortal() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-900">
-                ${quotes.reduce((sum, q) => sum + (q.total_amount || 0), 0).toLocaleString()}
+                ${quotes.reduce((sum, q) => sum + (q.total_cost || 0), 0).toLocaleString()}
               </div>
             </CardContent>
           </Card>
         </div>
 
         <Tabs defaultValue="quotes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white border shadow-sm">
+          <TabsList className="grid w-full grid-cols-3 bg-white border shadow-sm">
             <TabsTrigger value="quotes" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">
               Quotes
             </TabsTrigger>
@@ -552,16 +557,10 @@ export default function AdminPortal() {
               Projects
             </TabsTrigger>
             <TabsTrigger
-              value="customers"
+              value="users"
               className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
             >
-              Customers
-            </TabsTrigger>
-            <TabsTrigger
-              value="users"
-              className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900"
-            >
-              Users
+              User Management
             </TabsTrigger>
           </TabsList>
 
@@ -792,7 +791,7 @@ export default function AdminPortal() {
                                 <SelectValue placeholder="Select customer" />
                               </SelectTrigger>
                               <SelectContent className="bg-white border-2">
-                                {customers.map((customer) => (
+                                {users.map((customer) => (
                                   <SelectItem key={customer.id} value={customer.id}>
                                     {customer.first_name} {customer.last_name}
                                   </SelectItem>
@@ -990,97 +989,97 @@ export default function AdminPortal() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="customers" className="space-y-6">
+          <TabsContent value="users" className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Customers Management</h2>
-              <Dialog open={isCustomerModalOpen} onOpenChange={setIsCustomerModalOpen}>
+              <h2 className="text-xl font-semibold">User Management</h2>
+              <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={() => setEditingCustomer(null)}>
+                  <Button onClick={() => setEditingUser(null)}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Customer
+                    Create User
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>{editingCustomer ? "Edit Customer" : "Create New Customer"}</DialogTitle>
+                    <DialogTitle>{editingUser ? "Edit User" : "Create New User"}</DialogTitle>
                     <DialogDescription>
-                      {editingCustomer ? "Update customer information" : "Add a new customer to the system"}
+                      {editingUser ? "Update user information and settings" : "Add a new user to the system"}
                     </DialogDescription>
                   </DialogHeader>
-                  <form action={editingCustomer ? handleUpdateCustomer : handleCreateCustomer} className="space-y-4">
+                  <form action={editingUser ? handleUpdateUser : handleCreateUser} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="first_name">First Name</Label>
                         <Input
                           id="first_name"
                           name="first_name"
-                          defaultValue={editingCustomer?.first_name || ""}
+                          defaultValue={editingUser?.first_name || ""}
                           required
                         />
                       </div>
                       <div>
                         <Label htmlFor="last_name">Last Name</Label>
-                        <Input
-                          id="last_name"
-                          name="last_name"
-                          defaultValue={editingCustomer?.last_name || ""}
-                          required
-                        />
+                        <Input id="last_name" name="last_name" defaultValue={editingUser?.last_name || ""} required />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          defaultValue={editingCustomer?.email || ""}
-                          required
-                        />
+                        <Input id="email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
                       </div>
                       <div>
                         <Label htmlFor="phone">Phone</Label>
-                        <Input id="phone" name="phone" defaultValue={editingCustomer?.phone || ""} required />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="address">Address</Label>
-                      <Input id="address" name="address" defaultValue={editingCustomer?.address || ""} required />
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="city">City</Label>
-                        <Input id="city" name="city" defaultValue={editingCustomer?.city || ""} required />
+                        <Input id="phone" name="phone" defaultValue={editingUser?.phone || ""} />
                       </div>
                       <div>
-                        <Label htmlFor="state">State</Label>
-                        <Input id="state" name="state" defaultValue={editingCustomer?.state || ""} required />
-                      </div>
-                      <div>
-                        <Label htmlFor="zip_code">Zip Code</Label>
-                        <Input id="zip_code" name="zip_code" defaultValue={editingCustomer?.zip_code || ""} required />
-                      </div>
-                    </div>
-                    {editingCustomer && (
-                      <div>
-                        <Label htmlFor="is_active">Status</Label>
-                        <Select name="is_active" defaultValue={editingCustomer.is_active ? "true" : "false"}>
+                        <Label htmlFor="role">Role</Label>
+                        <Select name="role" defaultValue={editingUser?.role || "customer"}>
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select role" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="true">Active</SelectItem>
-                            <SelectItem value="false">Inactive</SelectItem>
+                            <SelectItem value="customer">Customer</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                    )}
+                      {editingUser && (
+                        <div>
+                          <Label htmlFor="is_active">Status</Label>
+                          <Select name="is_active" defaultValue={editingUser.is_active ? "true" : "false"}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="true">Active</SelectItem>
+                              <SelectItem value="false">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="address">Address</Label>
+                        <Input id="address" name="address" defaultValue={editingUser?.address || ""} />
+                      </div>
+                      <div>
+                        <Label htmlFor="city">City</Label>
+                        <Input id="city" name="city" defaultValue={editingUser?.city || ""} />
+                      </div>
+                      <div>
+                        <Label htmlFor="state">State</Label>
+                        <Input id="state" name="state" defaultValue={editingUser?.state || ""} />
+                      </div>
+                      <div>
+                        <Label htmlFor="zip_code">Zip Code</Label>
+                        <Input id="zip_code" name="zip_code" defaultValue={editingUser?.zip_code || ""} />
+                      </div>
+                    </div>
                     <div className="flex justify-end space-x-2">
-                      <Button type="button" variant="outline" onClick={() => setIsCustomerModalOpen(false)}>
+                      <Button type="button" variant="outline" onClick={() => setIsUserModalOpen(false)}>
                         Cancel
                       </Button>
-                      <Button type="submit">{editingCustomer ? "Update Customer" : "Create Customer"}</Button>
+                      <Button type="submit">{editingUser ? "Update User" : "Create User"}</Button>
                     </div>
                   </form>
                 </DialogContent>
@@ -1091,19 +1090,22 @@ export default function AdminPortal() {
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 border-b">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
+                          User
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Contact
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Address
+                          Role
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Quotes
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
@@ -1111,37 +1113,56 @@ export default function AdminPortal() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {customers.map((customer) => (
-                        <tr key={customer.id}>
+                      {users.map((user) => (
+                        <tr key={user.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {customer.first_name} {customer.last_name}
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {user.first_name} {user.last_name}
+                              </div>
+                              <div className="text-sm text-gray-500">{user.email}</div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{customer.email}</div>
-                            <div className="text-sm text-gray-500">{customer.phone}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {customer.city}, {customer.state} {customer.zip_code}
+                            <div className="text-sm text-gray-900">{user.phone}</div>
+                            <div className="text-sm text-gray-500">
+                              {user.city}, {user.state}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={customer.is_active ? "default" : "secondary"}>
-                              {customer.is_active ? "Active" : "Inactive"}
+                            <Badge
+                              variant={
+                                user.role === "admin" ? "default" : user.role === "staff" ? "secondary" : "outline"
+                              }
+                            >
+                              {user.role}
                             </Badge>
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={user.is_active ? "default" : "destructive"}>
+                              {user.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {quotes.filter((q) => q.user_id === user.id).length} quotes
+                            </div>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleViewUserDetails(user)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             <Button
+                              variant="ghost"
                               size="sm"
-                              variant="outline"
                               onClick={() => {
-                                setEditingCustomer(customer)
-                                setIsCustomerModalOpen(true)
+                                setEditingUser(user)
+                                setIsUserModalOpen(true)
                               }}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleDeleteCustomer(customer.id)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </td>
@@ -1153,64 +1174,105 @@ export default function AdminPortal() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="users" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Users Management</h2>
-            </div>
-
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Role
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Created
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {users.map((user) => (
-                        <tr key={user.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.first_name} {user.last_name}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={user.role === "admin" ? "default" : "secondary"}>{user.role}</Badge>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={user.is_active ? "default" : "secondary"}>
-                              {user.is_active ? "Active" : "Inactive"}
-                            </Badge>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(user.created_at).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
+
+        <Dialog open={isUserDetailModalOpen} onOpenChange={setIsUserDetailModalOpen}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>
+                User Details: {selectedUser?.first_name} {selectedUser?.last_name}
+              </DialogTitle>
+              <DialogDescription>Complete user information and quote history</DialogDescription>
+            </DialogHeader>
+            {selectedUser && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Contact Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div>
+                        <strong>Email:</strong> {selectedUser.email}
+                      </div>
+                      <div>
+                        <strong>Phone:</strong> {selectedUser.phone}
+                      </div>
+                      <div>
+                        <strong>Address:</strong> {selectedUser.address}
+                      </div>
+                      <div>
+                        <strong>City:</strong> {selectedUser.city}, {selectedUser.state} {selectedUser.zip_code}
+                      </div>
+                      <div>
+                        <strong>Role:</strong> <Badge>{selectedUser.role}</Badge>
+                      </div>
+                      <div>
+                        <strong>Status:</strong>{" "}
+                        <Badge variant={selectedUser.is_active ? "default" : "destructive"}>
+                          {selectedUser.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Quote Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div>
+                        <strong>Total Quotes:</strong> {userQuotes.length}
+                      </div>
+                      <div>
+                        <strong>Total Value:</strong> $
+                        {userQuotes.reduce((sum, q) => sum + (q.total_cost || 0), 0).toLocaleString()}
+                      </div>
+                      <div>
+                        <strong>Pending:</strong> {userQuotes.filter((q) => q.status === "pending").length}
+                      </div>
+                      <div>
+                        <strong>Approved:</strong> {userQuotes.filter((q) => q.status === "approved").length}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Quote History</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {userQuotes.map((quote) => (
+                            <tr key={quote.id}>
+                              <td className="px-4 py-2 text-sm">{quote.project_address}</td>
+                              <td className="px-4 py-2">
+                                <Badge variant={quote.status === "approved" ? "default" : "secondary"}>
+                                  {quote.status}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-2 text-sm">${quote.total_cost?.toLocaleString()}</td>
+                              <td className="px-4 py-2 text-sm">{new Date(quote.created_at).toLocaleDateString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
