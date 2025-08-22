@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { supabase } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -103,8 +103,6 @@ export default function AdminPortal() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createClient()
-
       try {
         const {
           data: { user },
@@ -144,8 +142,6 @@ export default function AdminPortal() {
   }, [router])
 
   const loadAllData = async () => {
-    const supabase = createClient()
-
     try {
       // Load quotes
       const { data: quotesData, error: quotesError } = await supabase
@@ -191,8 +187,6 @@ export default function AdminPortal() {
   }
 
   const handleCreateQuote = async (formData: FormData) => {
-    const supabase = createClient()
-
     try {
       const quoteData = {
         id: generateUUID(),
@@ -225,8 +219,6 @@ export default function AdminPortal() {
   const handleUpdateQuote = async (formData: FormData) => {
     if (!editingQuote) return
 
-    const supabase = createClient()
-
     try {
       const updateData = {
         customer_name: formData.get("customer_name") as string,
@@ -258,8 +250,6 @@ export default function AdminPortal() {
   }
 
   const handleCreateProject = async (formData: FormData) => {
-    const supabase = createClient()
-
     try {
       const projectData = {
         id: generateUUID(),
@@ -290,8 +280,6 @@ export default function AdminPortal() {
   const handleUpdateProject = async (formData: FormData) => {
     if (!editingProject) return
 
-    const supabase = createClient()
-
     try {
       const updateData = {
         title: formData.get("title") as string,
@@ -320,8 +308,6 @@ export default function AdminPortal() {
   }
 
   const handleCreateCustomer = async (formData: FormData) => {
-    const supabase = createClient()
-
     try {
       const customerData = {
         id: generateUUID(),
@@ -353,8 +339,6 @@ export default function AdminPortal() {
   const handleUpdateCustomer = async (formData: FormData) => {
     if (!editingCustomer) return
 
-    const supabase = createClient()
-
     try {
       const updateData = {
         first_name: formData.get("first_name") as string,
@@ -385,8 +369,6 @@ export default function AdminPortal() {
   const handleDeleteQuote = async (id: string) => {
     if (!confirm("Are you sure you want to delete this quote?")) return
 
-    const supabase = createClient()
-
     try {
       const { error } = await supabase.from("quotes").delete().eq("id", id)
 
@@ -403,8 +385,6 @@ export default function AdminPortal() {
   const handleDeleteProject = async (id: string) => {
     if (!confirm("Are you sure you want to delete this project?")) return
 
-    const supabase = createClient()
-
     try {
       const { error } = await supabase.from("projects").delete().eq("id", id)
 
@@ -420,8 +400,6 @@ export default function AdminPortal() {
 
   const handleDeleteCustomer = async (id: string) => {
     if (!confirm("Are you sure you want to delete this customer?")) return
-
-    const supabase = createClient()
 
     try {
       const { error } = await supabase.from("users").delete().eq("id", id)
@@ -465,7 +443,6 @@ export default function AdminPortal() {
               <Button
                 variant="outline"
                 onClick={async () => {
-                  const supabase = createClient()
                   await supabase.auth.signOut()
                   router.push("/login")
                 }}
