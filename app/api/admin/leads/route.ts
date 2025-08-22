@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
             created_by: "admin",
             source: "admin_portal",
           },
-          status: "new",
+          status: "pending",
           created_at: new Date().toISOString(),
         },
       ])

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("[v0] Supabase client created successfully")
     const supabase = await createClient()
     const {
       data: { user },
@@ -33,28 +34,30 @@ export async function POST(request: NextRequest) {
       access: "public",
     })
 
-    const { data: fileRecord, error: dbError } = await supabase
-      .from("project_files")
-      .insert({
-        project_id: projectId,
+    if (projectId) {
+      // Update project with photo information
+      const { data: project } = await supabase.from("projects").select("project_photos").eq("id", projectId).single()
+
+      const existingPhotos = project?.project_photos || []
+      const newPhoto = {
+        id: crypto.randomUUID(),
         filename: file.name,
-        file_url: blob.url,
-        file_type: file.type,
-        file_size: file.size,
+        url: blob.url,
+        type: file.type,
+        size: file.size,
         category,
         description,
         uploaded_by: user.id,
-      })
-      .select()
-      .single()
+        uploaded_at: new Date().toISOString(),
+      }
 
-    if (dbError) {
-      console.error("Database error:", dbError)
-      return NextResponse.json({ error: "Failed to save file record" }, { status: 500 })
+      const updatedPhotos = [...existingPhotos, newPhoto]
+
+      await supabase.from("projects").update({ project_photos: updatedPhotos }).eq("id", projectId)
     }
 
     return NextResponse.json({
-      id: fileRecord.id,
+      id: crypto.randomUUID(),
       url: blob.url,
       filename: file.name,
       size: file.size,
