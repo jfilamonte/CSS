@@ -4,18 +4,22 @@ import { createClient } from "@/lib/supabase/server"
 async function requireAdmin(request: NextRequest) {
   const supabase = await createClient()
 
+  console.log("[v0] Supabase client created successfully")
+
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser()
 
   if (authError || !user) {
+    console.error("[v0] Auth error or no user:", authError?.message || "No user")
     throw new Error("Unauthorized")
   }
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+  const { data: profile } = await supabase.from("user_profiles").select("role").eq("id", user.id).single()
 
   if (!profile || profile.role !== "admin") {
+    console.error("[v0] No admin profile found for user:", user.id)
     throw new Error("Unauthorized")
   }
 
@@ -34,19 +38,17 @@ export async function GET(request: NextRequest) {
 
     if (dbError) {
       console.error("[v0] Appointments API - Database error:", dbError)
-      throw new Error(`Failed to fetch appointments: ${dbError.message}`)
+      throw new Error(`Database error accessing appointments table: ${dbError.message}`)
     }
 
-    if (!appointments) {
-      console.error("[v0] Appointments API - No appointments table found")
-      throw new Error("Appointments table does not exist")
-    }
-
-    console.log("[v0] Appointments API - Success, found", appointments.length, "appointments")
-    return NextResponse.json(appointments)
+    console.log("[v0] Appointments API - Success, found", appointments?.length || 0, "appointments")
+    return NextResponse.json(appointments || [])
   } catch (error) {
     console.error("[v0] Appointments API - Error:", error)
-    return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to fetch appointments" },
+      { status: 500 },
+    )
   }
 }
 
@@ -67,6 +69,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[v0] Appointments API - Error:", error)
-    return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to create appointment" },
+      { status: 500 },
+    )
   }
 }

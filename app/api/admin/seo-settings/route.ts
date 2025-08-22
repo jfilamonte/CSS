@@ -4,18 +4,22 @@ import { createClient } from "@/lib/supabase/server"
 async function requireAdmin() {
   const supabase = await createClient()
 
+  console.log("[v0] Supabase client created successfully")
+
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser()
 
   if (authError || !user) {
+    console.error("[v0] Auth error or no user:", authError?.message || "No user")
     throw new Error("Unauthorized")
   }
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+  const { data: profile } = await supabase.from("user_profiles").select("role").eq("id", user.id).single()
 
   if (!profile || profile.role !== "admin") {
+    console.error("[v0] No admin profile found for user:", user.id)
     throw new Error("Unauthorized")
   }
 
@@ -31,19 +35,17 @@ export async function GET(request: NextRequest) {
 
     if (dbError) {
       console.error("[v0] SEO Settings API - Database error:", dbError)
-      throw new Error(`Failed to fetch SEO settings: ${dbError.message}`)
-    }
-
-    if (!seoSettings) {
-      console.error("[v0] SEO Settings API - No SEO settings found")
-      throw new Error("SEO settings table does not exist or is empty")
+      throw new Error(`Database error accessing seo_settings table: ${dbError.message}`)
     }
 
     console.log("[v0] SEO Settings API - Success")
-    return NextResponse.json(seoSettings)
+    return NextResponse.json(seoSettings || {})
   } catch (error) {
     console.error("[v0] SEO Settings API - Error:", error)
-    return NextResponse.json({ error: "Failed to fetch SEO settings" }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to fetch SEO settings" },
+      { status: 500 },
+    )
   }
 }
 
@@ -64,15 +66,13 @@ export async function PUT(request: NextRequest) {
       throw new Error(`Failed to update SEO settings: ${updateError.message}`)
     }
 
-    if (!updatedSettings) {
-      console.error("[v0] SEO Settings API - No data returned after update")
-      throw new Error("SEO settings update failed - no data returned")
-    }
-
     console.log("[v0] SEO Settings API - Settings updated:", Object.keys(data).length, "fields")
-    return NextResponse.json(updatedSettings)
+    return NextResponse.json(updatedSettings || data)
   } catch (error) {
     console.error("[v0] SEO Settings API - Error:", error)
-    return NextResponse.json({ error: "Failed to update SEO settings" }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to update SEO settings" },
+      { status: 500 },
+    )
   }
 }

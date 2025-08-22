@@ -2,11 +2,10 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import type { User } from "@supabase/supabase-js"
-import { supabase } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 
 interface AuthContextType {
-  user: User | null
+  user: any | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
@@ -16,74 +15,56 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const supabase = createClient()
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        setUser(session?.user ?? null)
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (session?.user) {
+        // Query users table instead of profiles
+        const { data: userData } = await supabase.from("users").select("*").eq("id", session.user.id).single()
 
-        if (session?.user) {
-          // Check if user is admin
-          const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single()
-
-          setIsAdmin(profile?.role === "admin")
-        }
-      } catch (error) {
-        console.error("Error getting initial session:", error)
-      } finally {
-        setLoading(false)
+        setUser(userData)
+        setIsAdmin(userData?.role === "admin")
       }
+      setLoading(false)
     }
 
-    getInitialSession()
+    getSession()
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[v0] Auth state changed:", event, session?.user?.email)
-      setUser(session?.user ?? null)
-
       if (session?.user) {
-        // Check if user is admin
-        const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single()
+        const { data: userData } = await supabase.from("users").select("*").eq("id", session.user.id).single()
 
-        setIsAdmin(profile?.role === "admin")
+        setUser(userData)
+        setIsAdmin(userData?.role === "admin")
       } else {
+        setUser(null)
         setIsAdmin(false)
       }
-
       setLoading(false)
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase])
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      return { error }
-    } catch (error) {
-      return { error }
-    }
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    return { error }
   }
 
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut()
-    } catch (error) {
-      console.error("Error signing out:", error)
-    }
+    await supabase.auth.signOut()
   }
 
   const value = {
