@@ -1,32 +1,61 @@
 "use client"
-
-import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { crypto } from "crypto"
+import { createClient } from "@/lib/supabase/client"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Trash2, Edit, Plus, Users, FileText, Calendar, BarChart3 } from "lucide-react"
 
-interface Lead {
+interface User {
   id: string
-  name: string
   email: string
+  first_name: string
+  last_name: string
   phone: string
-  project_type: string
-  message: string
-  status: string
+  role: string
+  is_active: boolean
   created_at: string
+}
+
+interface Quote {
+  id: string
+  customer_name: string
+  customer_email: string
+  customer_phone: string
+  project_address: string
+  square_footage: number
+  status: string
+  total_cost: number
+  created_at: string
+  quote_data: any
 }
 
 interface Project {
   id: string
   title: string
+  description: string
   customer_id: string
   status: string
+  progress_percentage: number
+  square_footage: number
+  project_address: string
   start_date: string
   estimated_completion: string
-  progress_percentage: number | null
-  square_footage: number | null
-  project_address: string | null
-  budget?: number | null
+  created_at: string
 }
 
 interface Customer {
@@ -36,1031 +65,1084 @@ interface Customer {
   email: string
   phone: string
   address: string
-  total_projects: number
+  city: string
+  state: string
+  zip_code: string
+  created_at: string
 }
 
-const logError = (error: Error, context?: any) => {
-  console.error("[v0] Error:", error.message, context)
-}
-
-function ErrorBoundary({ children }: { children: React.ReactNode }) {
-  const [hasError, setHasError] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      console.error("[v0] Runtime error caught:", event.error)
-      setError(event.error)
-      setHasError(true)
-    }
-
-    window.addEventListener("error", handleError)
-    return () => window.removeEventListener("error", handleError)
-  }, [])
-
-  if (hasError) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center p-8 bg-white rounded-lg shadow">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Admin Portal Error</h2>
-          <p className="text-gray-600 mb-4">Something went wrong loading the admin portal.</p>
-          <pre className="text-sm bg-gray-100 p-4 rounded text-left overflow-auto">
-            {error?.message || "Unknown error"}
-          </pre>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            Reload Page
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  return <>{children}</>
-}
-
-const generateUUID = () => {
-  return crypto.randomUUID()
-}
-
-const isValidUUID = (uuid: string) => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
-
-export default function AdminPage() {
-  console.log("[v0] AdminPage component rendering...")
-
+export default function AdminPortal() {
   const router = useRouter()
+  const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("dashboard")
-  const [showModal, setShowModal] = useState(false)
-  const [modalType, setModalType] = useState("")
-  const [editingItem, setEditingItem] = useState<any>(null)
 
-  const [leads, setLeads] = useState<Lead[]>([])
+  const [quotes, setQuotes] = useState<Quote[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [formData, setFormData] = useState<any>({})
+  const [users, setUsers] = useState<User[]>([])
+
+  // Modal states
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false)
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false)
+
+  // Edit states
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+
+  const generateUUID = () => {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0
+      const v = c == "x" ? r : (r & 0x3) | 0x8
+      return v.toString(16)
+    })
+  }
 
   useEffect(() => {
-    console.log("[v0] useEffect for auth check triggered")
+    const checkAuth = async () => {
+      const supabase = createClient()
+
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser()
+
+        if (error || !user) {
+          console.log("[v0] No authenticated user, redirecting to login")
+          router.push("/login")
+          return
+        }
+
+        // Check if user is admin
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .single()
+
+        if (userError || userData?.role !== "admin") {
+          console.log("[v0] User is not admin, redirecting")
+          router.push("/")
+          return
+        }
+
+        setUser(user)
+        await loadAllData()
+      } catch (error) {
+        console.error("[v0] Auth check error:", error)
+        router.push("/login")
+      } finally {
+        setLoading(false)
+      }
+    }
+
     checkAuth()
-  }, [])
+  }, [router])
 
-  useEffect(() => {
-    console.log("[v0] useEffect for data loading triggered, loading:", loading)
-    if (!loading) {
-      loadData()
-    }
-  }, [loading])
-
-  const checkAuth = async () => {
-    try {
-      console.log("[v0] Starting auth check...")
-      const response = await fetch("/api/auth/user")
-      console.log("[v0] Auth response status:", response.status)
-
-      if (!response.ok) {
-        console.log("[v0] Auth failed, redirecting to login")
-        router.push("/auth/login")
-        return
-      }
-
-      const userData = await response.json()
-      console.log("[v0] User data received:", userData)
-
-      if (!userData.user || !["ADMIN", "STAFF", "admin", "staff"].includes(userData.user.role)) {
-        console.log("[v0] User role check failed:", userData.user?.role)
-        router.push("/")
-        return
-      }
-
-      console.log("[v0] Auth successful, loading dashboard")
-      setLoading(false)
-    } catch (error) {
-      console.error("[v0] Auth error:", error)
-      logError(error as Error, { context: "Admin auth check" })
-      router.push("/auth/login")
-    }
-  }
-
-  const loadData = async () => {
-    try {
-      const leadsResponse = await fetch("/api/admin/leads")
-      if (leadsResponse.ok) {
-        const leadsData = await leadsResponse.json()
-        setLeads(leadsData.leads || [])
-      }
-
-      const projectsResponse = await fetch("/api/admin/projects")
-      if (projectsResponse.ok) {
-        const projectsData = await projectsResponse.json()
-        const mappedProjects = (projectsData.projects || []).map((project: any) => ({
-          id: project.id,
-          title: project.title,
-          customer_id: project.customer_id,
-          status: project.status,
-          start_date: project.start_date,
-          estimated_completion: project.estimated_completion,
-          progress_percentage: project.progress_percentage,
-          square_footage: project.square_footage,
-          project_address: project.project_address,
-          budget: project.budget,
-        }))
-        setProjects(mappedProjects)
-      }
-
-      const customersResponse = await fetch("/api/admin/users")
-      if (customersResponse.ok) {
-        const customersData = await customersResponse.json()
-        const customerList =
-          customersData.users
-            ?.filter((user: any) => user.role === "customer")
-            .map((user: any) => ({
-              id: user.id,
-              first_name: user.first_name,
-              last_name: user.last_name,
-              email: user.email,
-              phone: user.phone,
-              address: user.address || "",
-              total_projects: 0,
-            })) || []
-        setCustomers(customerList)
-      }
-    } catch (error) {
-      logError(error as Error, { context: "Loading admin data" })
-    }
-  }
-
-  const handleCreateLead = async () => {
-    if (formData.name && formData.email && formData.phone && formData.square_footage) {
-      try {
-        console.log("[v0] Creating lead with data:", formData)
-        const response = await fetch("/api/admin/leads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customer_name: formData.name,
-            customer_email: formData.email,
-            customer_phone: formData.phone,
-            project_address: formData.project_address || "",
-            square_footage: Number.parseInt(formData.square_footage),
-            package_id: formData.package_id || null,
-            custom_components: formData.custom_components || {},
-            total_cost: formData.total_cost || 0,
-            status: "new",
-            project_type: formData.project_type || "General",
-            message: formData.message || "",
-          }),
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          setLeads([...leads, result.lead])
-          setFormData({})
-          setEditingItem(null)
-          setShowModal(false)
-          console.log("[v0] Lead created successfully:", result.lead.id)
-        } else {
-          const errorText = await response.text()
-          console.log("[v0] Lead creation failed:", response.status, errorText)
-          throw new Error(`Failed to create lead: ${response.status}`)
-        }
-      } catch (error) {
-        console.log("[v0] Lead creation error:", error)
-        logError(error as Error, { context: "Creating lead", formData })
-      }
-    } else {
-      console.log("[v0] Missing required fields for lead creation")
-    }
-  }
-
-  const handleCreateProject = async () => {
-    const missingFields = []
-    if (!formData.title) missingFields.push("title")
-    if (!formData.customer_id) missingFields.push("customer_id")
-
-    if (missingFields.length > 0) {
-      const validationError = new Error(`Missing required fields: ${missingFields.join(", ")}`)
-      console.log("[v0] Validation error:", validationError.message)
-      logError(validationError, { context: "Project validation", formData })
-      return
-    }
-
-    if (!isValidUUID(formData.customer_id)) {
-      const validationError = new Error("Invalid customer ID format - must be a valid UUID")
-      console.log("[v0] UUID validation error:", validationError.message)
-      logError(validationError, { context: "Project validation", formData })
-      return
-    }
+  const loadAllData = async () => {
+    const supabase = createClient()
 
     try {
-      const response = await fetch("/api/admin/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          id: generateUUID(),
-        }),
-      })
+      // Load quotes
+      const { data: quotesData, error: quotesError } = await supabase
+        .from("quotes")
+        .select("*")
+        .order("created_at", { ascending: false })
 
-      if (response.ok) {
-        const result = await response.json()
-        setProjects([...projects, result.project])
-        setFormData({})
-        setShowModal(false)
-        console.log("[v0] Project created successfully:", result.project.id)
-      } else {
-        const errorText = await response.text()
-        console.log("[v0] Project creation failed:", response.status, errorText)
-        throw new Error(`Failed to create project: ${response.status}`)
-      }
+      if (quotesError) throw quotesError
+      setQuotes(quotesData || [])
+
+      // Load projects
+      const { data: projectsData, error: projectsError } = await supabase
+        .from("projects")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (projectsError) throw projectsError
+      setProjects(projectsData || [])
+
+      // Load customers (users with customer role)
+      const { data: customersData, error: customersError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("role", "customer")
+        .order("created_at", { ascending: false })
+
+      if (customersError) throw customersError
+      setCustomers(customersData || [])
+
+      // Load all users
+      const { data: usersData, error: usersError } = await supabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (usersError) throw usersError
+      setUsers(usersData || [])
+
+      console.log("[v0] All data loaded successfully")
     } catch (error) {
-      console.log("[v0] Project creation error:", error)
-      logError(error as Error, { context: "Creating project", formData })
+      console.error("[v0] Error loading data:", error)
     }
   }
 
-  const handleCreateCustomer = async () => {
-    if (formData.name && formData.email && formData.phone) {
-      try {
-        const [firstName, ...lastNameParts] = formData.name.split(" ")
-        const lastName = lastNameParts.join(" ")
+  const handleCreateQuote = async (formData: FormData) => {
+    const supabase = createClient()
 
-        const response = await fetch("/api/admin/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            first_name: firstName,
-            last_name: lastName,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address || "",
-            role: "customer",
-          }),
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          const newCustomer = {
-            id: result.user.id,
-            first_name: result.user.first_name,
-            last_name: result.user.last_name,
-            email: result.user.email,
-            phone: result.user.phone,
-            address: result.user.address || "",
-            total_projects: 0,
-          }
-          setCustomers([...customers, newCustomer])
-          setFormData({})
-          setEditingItem(null)
-          setShowModal(false)
-          console.log("[v0] Customer created successfully:", result.user.id)
-        } else {
-          throw new Error("Failed to create customer")
-        }
-      } catch (error) {
-        logError(error as Error, { context: "Creating customer", formData })
-      }
-    }
-  }
-
-  const handleUpdateStatus = async (type: string, id: string, newStatus: string) => {
     try {
-      if (type === "lead") {
-        const response = await fetch(`/api/admin/leads/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        })
-
-        if (response.ok) {
-          setLeads(leads.map((lead) => (lead.id === id ? { ...lead, status: newStatus } : lead)))
-        }
-      } else if (type === "project") {
-        const response = await fetch(`/api/admin/projects/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        })
-
-        if (response.ok) {
-          setProjects(projects.map((project) => (project.id === id ? { ...project, status: newStatus } : project)))
-        }
+      const quoteData = {
+        id: generateUUID(),
+        customer_name: formData.get("customer_name") as string,
+        customer_email: formData.get("customer_email") as string,
+        customer_phone: formData.get("customer_phone") as string,
+        project_address: formData.get("project_address") as string,
+        square_footage: Number.parseInt(formData.get("square_footage") as string),
+        status: "pending", // Use valid status from database constraint
+        total_cost: Number.parseFloat(formData.get("total_cost") as string) || 0,
+        quote_data: {
+          notes: (formData.get("notes") as string) || "",
+          created_by: user?.id,
+        },
       }
 
-      console.log(`[v0] ${type} status updated successfully:`, { type, id, newStatus })
+      const { error } = await supabase.from("quotes").insert(quoteData)
+
+      if (error) throw error
+
+      console.log("[v0] Quote created successfully")
+      setIsQuoteModalOpen(false)
+      await loadAllData()
     } catch (error) {
-      logError(error as Error, { context: "Updating status", type, id, newStatus })
+      console.error("[v0] Error creating quote:", error)
+      alert("Failed to create quote: " + (error as Error).message)
     }
   }
 
-  const handleDeleteLead = async (id: string) => {
+  const handleUpdateQuote = async (formData: FormData) => {
+    if (!editingQuote) return
+
+    const supabase = createClient()
+
     try {
-      console.log("[v0] Deleting lead with ID:", id, "Type:", typeof id)
-
-      if (!id || typeof id !== "string" || id.length < 36) {
-        throw new Error("Invalid lead ID format")
+      const updateData = {
+        customer_name: formData.get("customer_name") as string,
+        customer_email: formData.get("customer_email") as string,
+        customer_phone: formData.get("customer_phone") as string,
+        project_address: formData.get("project_address") as string,
+        square_footage: Number.parseInt(formData.get("square_footage") as string),
+        status: formData.get("status") as string,
+        total_cost: Number.parseFloat(formData.get("total_cost") as string) || 0,
+        quote_data: {
+          ...editingQuote.quote_data,
+          notes: (formData.get("notes") as string) || "",
+          updated_by: user?.id,
+        },
       }
 
-      const response = await fetch(`/api/admin/leads/${id}`, {
-        method: "DELETE",
-      })
+      const { error } = await supabase.from("quotes").update(updateData).eq("id", editingQuote.id)
 
-      if (response.ok) {
-        setLeads(leads.filter((lead) => lead.id !== id))
-        console.log("[v0] Lead deleted successfully")
-      } else {
-        throw new Error(`Failed to delete lead: ${response.status}`)
-      }
+      if (error) throw error
+
+      console.log("[v0] Quote updated successfully")
+      setIsQuoteModalOpen(false)
+      setEditingQuote(null)
+      await loadAllData()
     } catch (error) {
-      console.error("[v0] Delete error:", error)
-      logError(error as Error, { context: "Deleting lead", id })
+      console.error("[v0] Error updating quote:", error)
+      alert("Failed to update quote: " + (error as Error).message)
+    }
+  }
+
+  const handleCreateProject = async (formData: FormData) => {
+    const supabase = createClient()
+
+    try {
+      const projectData = {
+        id: generateUUID(),
+        title: formData.get("title") as string,
+        description: formData.get("description") as string,
+        customer_id: formData.get("customer_id") as string,
+        status: "planning",
+        progress_percentage: 0,
+        square_footage: Number.parseInt(formData.get("square_footage") as string),
+        project_address: formData.get("project_address") as string,
+        start_date: formData.get("start_date") as string,
+        estimated_completion: formData.get("estimated_completion") as string,
+      }
+
+      const { error } = await supabase.from("projects").insert(projectData)
+
+      if (error) throw error
+
+      console.log("[v0] Project created successfully")
+      setIsProjectModalOpen(false)
+      await loadAllData()
+    } catch (error) {
+      console.error("[v0] Error creating project:", error)
+      alert("Failed to create project: " + (error as Error).message)
+    }
+  }
+
+  const handleUpdateProject = async (formData: FormData) => {
+    if (!editingProject) return
+
+    const supabase = createClient()
+
+    try {
+      const updateData = {
+        title: formData.get("title") as string,
+        description: formData.get("description") as string,
+        customer_id: formData.get("customer_id") as string,
+        status: formData.get("status") as string,
+        progress_percentage: Number.parseInt(formData.get("progress_percentage") as string),
+        square_footage: Number.parseInt(formData.get("square_footage") as string),
+        project_address: formData.get("project_address") as string,
+        start_date: formData.get("start_date") as string,
+        estimated_completion: formData.get("estimated_completion") as string,
+      }
+
+      const { error } = await supabase.from("projects").update(updateData).eq("id", editingProject.id)
+
+      if (error) throw error
+
+      console.log("[v0] Project updated successfully")
+      setIsProjectModalOpen(false)
+      setEditingProject(null)
+      await loadAllData()
+    } catch (error) {
+      console.error("[v0] Error updating project:", error)
+      alert("Failed to update project: " + (error as Error).message)
+    }
+  }
+
+  const handleCreateCustomer = async (formData: FormData) => {
+    const supabase = createClient()
+
+    try {
+      const customerData = {
+        id: generateUUID(),
+        first_name: formData.get("first_name") as string,
+        last_name: formData.get("last_name") as string,
+        email: formData.get("email") as string,
+        phone: formData.get("phone") as string,
+        address: formData.get("address") as string,
+        city: formData.get("city") as string,
+        state: formData.get("state") as string,
+        zip_code: formData.get("zip_code") as string,
+        role: "customer",
+        is_active: true,
+      }
+
+      const { error } = await supabase.from("users").insert(customerData)
+
+      if (error) throw error
+
+      console.log("[v0] Customer created successfully")
+      setIsCustomerModalOpen(false)
+      await loadAllData()
+    } catch (error) {
+      console.error("[v0] Error creating customer:", error)
+      alert("Failed to create customer: " + (error as Error).message)
+    }
+  }
+
+  const handleUpdateCustomer = async (formData: FormData) => {
+    if (!editingCustomer) return
+
+    const supabase = createClient()
+
+    try {
+      const updateData = {
+        first_name: formData.get("first_name") as string,
+        last_name: formData.get("last_name") as string,
+        email: formData.get("email") as string,
+        phone: formData.get("phone") as string,
+        address: formData.get("address") as string,
+        city: formData.get("city") as string,
+        state: formData.get("state") as string,
+        zip_code: formData.get("zip_code") as string,
+        is_active: formData.get("is_active") === "true",
+      }
+
+      const { error } = await supabase.from("users").update(updateData).eq("id", editingCustomer.id)
+
+      if (error) throw error
+
+      console.log("[v0] Customer updated successfully")
+      setIsCustomerModalOpen(false)
+      setEditingCustomer(null)
+      await loadAllData()
+    } catch (error) {
+      console.error("[v0] Error updating customer:", error)
+      alert("Failed to update customer: " + (error as Error).message)
+    }
+  }
+
+  const handleDeleteQuote = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this quote?")) return
+
+    const supabase = createClient()
+
+    try {
+      const { error } = await supabase.from("quotes").delete().eq("id", id)
+
+      if (error) throw error
+
+      console.log("[v0] Quote deleted successfully")
+      await loadAllData()
+    } catch (error) {
+      console.error("[v0] Error deleting quote:", error)
+      alert("Failed to delete quote: " + (error as Error).message)
     }
   }
 
   const handleDeleteProject = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this project?")) return
+
+    const supabase = createClient()
+
     try {
-      console.log("[v0] Deleting project with ID:", id, "Type:", typeof id)
+      const { error } = await supabase.from("projects").delete().eq("id", id)
 
-      if (!id || typeof id !== "string" || id.length < 36) {
-        throw new Error("Invalid project ID format")
-      }
+      if (error) throw error
 
-      const response = await fetch(`/api/admin/projects/${id}`, {
-        method: "DELETE",
-      })
-
-      if (response.ok) {
-        setProjects(projects.filter((project) => project.id !== id))
-        console.log("[v0] Project deleted successfully")
-      } else {
-        throw new Error(`Failed to delete project: ${response.status}`)
-      }
+      console.log("[v0] Project deleted successfully")
+      await loadAllData()
     } catch (error) {
-      console.error("[v0] Delete error:", error)
-      logError(error as Error, { context: "Deleting project", id })
+      console.error("[v0] Error deleting project:", error)
+      alert("Failed to delete project: " + (error as Error).message)
     }
   }
 
   const handleDeleteCustomer = async (id: string) => {
-    try {
-      console.log("[v0] Deleting customer with ID:", id, "Type:", typeof id)
+    if (!confirm("Are you sure you want to delete this customer?")) return
 
-      if (!id || typeof id !== "string" || id.length < 36) {
-        throw new Error("Invalid customer ID format")
-      }
-
-      const response = await fetch(`/api/admin/users/${id}`, {
-        method: "DELETE",
-      })
-
-      if (response.ok) {
-        setCustomers(customers.filter((customer) => customer.id !== id))
-        console.log("[v0] Customer deleted successfully")
-      } else {
-        throw new Error(`Failed to delete customer: ${response.status}`)
-      }
-    } catch (error) {
-      console.error("[v0] Delete error:", error)
-      logError(error as Error, { context: "Deleting customer", id })
-    }
-  }
-
-  const handleEdit = (type: string, item: any) => {
-    setModalType(type)
-    setEditingItem(item)
-
-    if (type === "lead") {
-      setFormData({
-        name: item.name,
-        email: item.email,
-        phone: item.phone,
-        project_type: item.project_type,
-        message: item.message,
-        project_address: item.project_address || "",
-        square_footage: item.square_footage || "",
-      })
-    } else if (type === "project") {
-      setFormData({
-        title: item.title,
-        customer_id: item.customer_id,
-        square_footage: item.square_footage || "",
-        project_address: item.project_address || "",
-        start_date: item.start_date,
-        estimated_completion: item.estimated_completion,
-      })
-    } else if (type === "customer") {
-      setFormData({
-        name: `${item.first_name} ${item.last_name}`,
-        email: item.email,
-        phone: item.phone,
-        address: item.address || "",
-      })
-    }
-
-    setShowModal(true)
-  }
-
-  const handleUpdate = async () => {
-    if (!editingItem) return
+    const supabase = createClient()
 
     try {
-      let response
-      let updatedItem
+      const { error } = await supabase.from("users").delete().eq("id", id)
 
-      if (modalType === "lead") {
-        response = await fetch(`/api/admin/leads/${editingItem.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customer_name: formData.name,
-            customer_email: formData.email,
-            customer_phone: formData.phone,
-            project_address: formData.project_address || "",
-            square_footage: Number.parseInt(formData.square_footage) || null,
-            project_type: formData.project_type || "General",
-            message: formData.message || "",
-          }),
-        })
+      if (error) throw error
 
-        if (response.ok) {
-          const result = await response.json()
-          setLeads(leads.map((lead) => (lead.id === editingItem.id ? result.lead : lead)))
-          updatedItem = result.lead
-        }
-      } else if (modalType === "project") {
-        response = await fetch(`/api/admin/projects/${editingItem.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: formData.title,
-            customer_id: formData.customer_id,
-            square_footage: formData.square_footage ? Number.parseInt(formData.square_footage) : null,
-            project_address: formData.project_address || null,
-            start_date: formData.start_date,
-            estimated_completion: formData.estimated_completion,
-          }),
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          setProjects(projects.map((project) => (project.id === editingItem.id ? result.project : project)))
-          updatedItem = result.project
-        }
-      } else if (modalType === "customer") {
-        const [firstName, ...lastNameParts] = formData.name.split(" ")
-        const lastName = lastNameParts.join(" ")
-
-        response = await fetch(`/api/admin/users/${editingItem.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            first_name: firstName,
-            last_name: lastName,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address || "",
-          }),
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          const updatedCustomer = {
-            id: result.user.id,
-            first_name: result.user.first_name,
-            last_name: result.user.last_name,
-            email: result.user.email,
-            phone: result.user.phone,
-            address: result.user.address || "",
-            total_projects: editingItem.total_projects,
-          }
-          setCustomers(customers.map((customer) => (customer.id === editingItem.id ? updatedCustomer : customer)))
-          updatedItem = updatedCustomer
-        }
-      }
-
-      if (response?.ok) {
-        setFormData({})
-        setEditingItem(null)
-        setShowModal(false)
-        console.log(`[v0] ${modalType} updated successfully:`, updatedItem?.id)
-      } else {
-        throw new Error(`Failed to update ${modalType}`)
-      }
+      console.log("[v0] Customer deleted successfully")
+      await loadAllData()
     } catch (error) {
-      logError(error as Error, { context: `Updating ${modalType}`, formData, editingItem })
+      console.error("[v0] Error deleting customer:", error)
+      alert("Failed to delete customer: " + (error as Error).message)
     }
-  }
-
-  const openModal = (type: string) => {
-    setModalType(type)
-    setFormData({})
-    setEditingItem(null)
-    setShowModal(true)
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading admin dashboard...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Loading admin portal...</div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Redirecting to login...</div>
       </div>
     )
   }
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-green-800">Admin Dashboard</h1>
-            <button
-              onClick={() => router.push("/")}
-              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-            >
-              Back to Site
-            </button>
-          </div>
-
-          <div className="bg-white rounded-lg shadow mb-6">
-            <div className="border-b border-gray-200">
-              <nav className="flex space-x-8 px-6">
-                {["dashboard", "leads", "projects", "customers", "content"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`py-4 px-2 border-b-2 font-medium text-sm capitalize ${
-                      activeTab === tab
-                        ? "border-green-500 text-green-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </nav>
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold text-gray-900">Admin Portal</h1>
             </div>
-
-            <div className="p-6">
-              {activeTab === "dashboard" && (
-                <div>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-green-50 p-6 rounded-lg border border-green-200">
-                      <h3 className="text-lg font-semibold mb-2 text-green-800">Total Leads</h3>
-                      <p className="text-3xl font-bold text-green-600">{leads.length}</p>
-                    </div>
-                    <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-                      <h3 className="text-lg font-semibold mb-2 text-blue-800">Active Projects</h3>
-                      <p className="text-3xl font-bold text-blue-600">
-                        {projects.filter((p) => p.status === "in_progress").length}
-                      </p>
-                    </div>
-                    <div className="bg-orange-50 p-6 rounded-lg border border-orange-200">
-                      <h3 className="text-lg font-semibold mb-2 text-orange-800">Total Customers</h3>
-                      <p className="text-3xl font-bold text-orange-600">{customers.length}</p>
-                    </div>
-                    <div className="bg-purple-50 p-6 rounded-lg border border-purple-200">
-                      <h3 className="text-lg font-semibold mb-2 text-purple-800">Revenue</h3>
-                      <p className="text-3xl font-bold text-purple-600">
-                        ${projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <button
-                        onClick={() => openModal("lead")}
-                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                      >
-                        Add New Lead
-                      </button>
-                      <button
-                        onClick={() => openModal("project")}
-                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                      >
-                        Create Project
-                      </button>
-                      <button
-                        onClick={() => openModal("customer")}
-                        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-                      >
-                        Add Customer
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "leads" && (
-                <div>
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">Leads Management</h2>
-                    <button
-                      onClick={() => openModal("lead")}
-                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                    >
-                      Add New Lead
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Project Type
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {leads.map((lead) => (
-                          <tr key={lead.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">{lead.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>{lead.email}</div>
-                              <div className="text-sm text-gray-500">{lead.phone}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">{lead.project_type}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <select
-                                value={lead.status}
-                                onChange={(e) => handleUpdateStatus("lead", lead.id, e.target.value)}
-                                className="border rounded px-2 py-1"
-                              >
-                                <option value="new">New</option>
-                                <option value="contacted">Contacted</option>
-                                <option value="quoted">Quoted</option>
-                                <option value="converted">Converted</option>
-                                <option value="closed">Closed</option>
-                              </select>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <button
-                                onClick={() => handleEdit("lead", lead)}
-                                className="text-blue-600 hover:text-blue-900 mr-3"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteLead(lead.id)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "projects" && (
-                <div>
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">Projects Management</h2>
-                    <button
-                      onClick={() => openModal("project")}
-                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                    >
-                      Create New Project
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Project Title
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Customer ID
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {projects.map((project) => (
-                          <tr key={project.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">{project.title}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{project.customer_id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{project.progress_percentage || 0}%</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <select
-                                value={project.status}
-                                onChange={(e) => handleUpdateStatus("project", project.id, e.target.value)}
-                                className="border rounded px-2 py-1"
-                              >
-                                <option value="planning">Planning</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="completed">Completed</option>
-                                <option value="on_hold">On Hold</option>
-                              </select>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <button
-                                onClick={() => handleEdit("project", project)}
-                                className="text-blue-600 hover:text-blue-900 mr-3"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteProject(project.id)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "customers" && (
-                <div>
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">Customer Management</h2>
-                    <button
-                      onClick={() => openModal("customer")}
-                      className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-                    >
-                      Add New Customer
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Address</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Projects</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {customers.map((customer) => (
-                          <tr key={customer.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {customer.first_name} {customer.last_name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>{customer.email}</div>
-                              <div className="text-sm text-gray-500">{customer.phone}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">{customer.address}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{customer.total_projects}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <button
-                                onClick={() => handleEdit("customer", customer)}
-                                className="text-blue-600 hover:text-blue-900 mr-3"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteCustomer(customer.id)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "content" && (
-                <div>
-                  <h2 className="text-2xl font-bold mb-6">Content Management</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-50 p-6 rounded-lg">
-                      <h3 className="text-lg font-semibold mb-4">Website Content</h3>
-                      <div className="space-y-3">
-                        <button
-                          onClick={() => router.push("/admin/content")}
-                          className="w-full text-left bg-white hover:bg-gray-100 px-4 py-3 rounded border"
-                        >
-                          Edit Homepage Content
-                        </button>
-                        <button
-                          onClick={() => router.push("/admin/services")}
-                          className="w-full text-left bg-white hover:bg-gray-100 px-4 py-3 rounded border"
-                        >
-                          Manage Services
-                        </button>
-                        <button
-                          onClick={() => router.push("/admin/gallery")}
-                          className="w-full text-left bg-white hover:bg-gray-100 px-4 py-3 rounded border"
-                        >
-                          Photo Gallery
-                        </button>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-6 rounded-lg">
-                      <h3 className="text-lg font-semibold mb-4">SEO & Analytics</h3>
-                      <div className="space-y-3">
-                        <button
-                          onClick={() => router.push("/admin/seo")}
-                          className="w-full text-left bg-white hover:bg-gray-100 px-4 py-3 rounded border"
-                        >
-                          SEO Settings
-                        </button>
-                        <button
-                          onClick={() => router.push("/admin/analytics")}
-                          className="w-full text-left bg-white hover:bg-gray-100 px-4 py-3 rounded border"
-                        >
-                          Analytics Dashboard
-                        </button>
-                        <button
-                          onClick={() => router.push("/admin/error-logs")}
-                          className="w-full text-left bg-white hover:bg-gray-100 px-4 py-3 rounded border"
-                        >
-                          Error Logs
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-500">Welcome, {user.email}</span>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  const supabase = createClient()
+                  await supabase.auth.signOut()
+                  router.push("/login")
+                }}
+              >
+                Sign Out
+              </Button>
             </div>
           </div>
-
-          {showModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-lg w-full max-w-md">
-                <h3 className="text-lg font-semibold mb-4">
-                  {editingItem ? "Edit" : "Create New"} {modalType.charAt(0).toUpperCase() + modalType.slice(1)}
-                </h3>
-
-                {modalType === "lead" && (
-                  <div className="space-y-4">
-                    <input
-                      type="text"
-                      placeholder="Name"
-                      value={formData.name || ""}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={formData.email || ""}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <input
-                      type="tel"
-                      placeholder="Phone"
-                      value={formData.phone || ""}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Project Address"
-                      value={formData.project_address || ""}
-                      onChange={(e) => setFormData({ ...formData, project_address: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Square Footage *"
-                      value={formData.square_footage || ""}
-                      onChange={(e) => setFormData({ ...formData, square_footage: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                      required
-                    />
-                    <select
-                      value={formData.project_type || ""}
-                      onChange={(e) => setFormData({ ...formData, project_type: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    >
-                      <option value="">Select Project Type</option>
-                      <option value="Garage Floor">Garage Floor</option>
-                      <option value="Basement">Basement</option>
-                      <option value="Commercial">Commercial</option>
-                      <option value="Industrial">Industrial</option>
-                    </select>
-                    <textarea
-                      placeholder="Message"
-                      value={formData.message || ""}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="w-full border rounded px-3 py-2 h-20"
-                    />
-                  </div>
-                )}
-
-                {modalType === "project" && (
-                  <div className="space-y-4">
-                    <input
-                      type="text"
-                      placeholder="Project Title"
-                      value={formData.title || ""}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Customer ID"
-                      value={formData.customer_id || ""}
-                      onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Square Footage"
-                      value={formData.square_footage || ""}
-                      onChange={(e) => setFormData({ ...formData, square_footage: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Project Address"
-                      value={formData.project_address || ""}
-                      onChange={(e) => setFormData({ ...formData, project_address: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                  </div>
-                )}
-
-                {modalType === "customer" && (
-                  <div className="space-y-4">
-                    <input
-                      type="text"
-                      placeholder="Name"
-                      value={formData.name || ""}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={formData.email || ""}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <input
-                      type="tel"
-                      placeholder="Phone"
-                      value={formData.phone || ""}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
-                    <textarea
-                      placeholder="Address"
-                      value={formData.address || ""}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full border rounded px-3 py-2 h-20"
-                    />
-                  </div>
-                )}
-
-                <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editingItem) {
-                        handleUpdate()
-                      } else {
-                        if (modalType === "lead") handleCreateLead()
-                        else if (modalType === "project") handleCreateProject()
-                        else if (modalType === "customer") handleCreateCustomer()
-                      }
-                    }}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                  >
-                    {editingItem ? "Update" : "Create"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-    </ErrorBoundary>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="quotes">Quotes ({quotes.length})</TabsTrigger>
+            <TabsTrigger value="projects">Projects ({projects.length})</TabsTrigger>
+            <TabsTrigger value="customers">Customers ({customers.length})</TabsTrigger>
+            <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Quotes</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{quotes.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {quotes.filter((q) => q.status === "pending").length} pending
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{projects.filter((p) => p.status === "in_progress").length}</div>
+                  <p className="text-xs text-muted-foreground">{projects.length} total projects</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{customers.length}</div>
+                  <p className="text-xs text-muted-foreground">{customers.filter((c) => c.is_active).length} active</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    ${quotes.reduce((sum, q) => sum + (q.total_cost || 0), 0).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Total quote value</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="quotes" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Quotes Management</h2>
+              <Dialog open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => setEditingQuote(null)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Quote
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{editingQuote ? "Edit Quote" : "Create New Quote"}</DialogTitle>
+                    <DialogDescription>
+                      {editingQuote ? "Update quote information" : "Add a new quote to the system"}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form action={editingQuote ? handleUpdateQuote : handleCreateQuote} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="customer_name">Customer Name</Label>
+                        <Input
+                          id="customer_name"
+                          name="customer_name"
+                          defaultValue={editingQuote?.customer_name || ""}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="customer_email">Customer Email</Label>
+                        <Input
+                          id="customer_email"
+                          name="customer_email"
+                          type="email"
+                          defaultValue={editingQuote?.customer_email || ""}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="customer_phone">Customer Phone</Label>
+                        <Input
+                          id="customer_phone"
+                          name="customer_phone"
+                          defaultValue={editingQuote?.customer_phone || ""}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="square_footage">Square Footage</Label>
+                        <Input
+                          id="square_footage"
+                          name="square_footage"
+                          type="number"
+                          defaultValue={editingQuote?.square_footage || ""}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="project_address">Project Address</Label>
+                      <Input
+                        id="project_address"
+                        name="project_address"
+                        defaultValue={editingQuote?.project_address || ""}
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="total_cost">Total Cost</Label>
+                        <Input
+                          id="total_cost"
+                          name="total_cost"
+                          type="number"
+                          step="0.01"
+                          defaultValue={editingQuote?.total_cost || ""}
+                        />
+                      </div>
+                      {editingQuote && (
+                        <div>
+                          <Label htmlFor="status">Status</Label>
+                          <Select name="status" defaultValue={editingQuote.status}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                              <SelectItem value="expired">Expired</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="notes">Notes</Label>
+                      <Textarea id="notes" name="notes" defaultValue={editingQuote?.quote_data?.notes || ""} rows={3} />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button type="button" variant="outline" onClick={() => setIsQuoteModalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">{editingQuote ? "Update Quote" : "Create Quote"}</Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Customer
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Project Address
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Square Footage
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Total Cost
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {quotes.map((quote) => (
+                        <tr key={quote.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{quote.customer_name}</div>
+                              <div className="text-sm text-gray-500">{quote.customer_email}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{quote.project_address}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {quote.square_footage?.toLocaleString() || "N/A"} sq ft
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${(quote.total_cost || 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={quote.status === "approved" ? "default" : "secondary"}>
+                              {quote.status}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingQuote(quote)
+                                setIsQuoteModalOpen(true)
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDeleteQuote(quote.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="projects" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Projects Management</h2>
+              <Dialog open={isProjectModalOpen} onOpenChange={setIsProjectModalOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => setEditingProject(null)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Project
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{editingProject ? "Edit Project" : "Create New Project"}</DialogTitle>
+                    <DialogDescription>
+                      {editingProject ? "Update project information" : "Add a new project to the system"}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form action={editingProject ? handleUpdateProject : handleCreateProject} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="title">Project Title</Label>
+                        <Input id="title" name="title" defaultValue={editingProject?.title || ""} required />
+                      </div>
+                      <div>
+                        <Label htmlFor="customer_id">Customer</Label>
+                        <Select name="customer_id" defaultValue={editingProject?.customer_id || ""}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select customer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {customers.map((customer) => (
+                              <SelectItem key={customer.id} value={customer.id}>
+                                {customer.first_name} {customer.last_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        name="description"
+                        defaultValue={editingProject?.description || ""}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="square_footage">Square Footage</Label>
+                        <Input
+                          id="square_footage"
+                          name="square_footage"
+                          type="number"
+                          defaultValue={editingProject?.square_footage || ""}
+                          required
+                        />
+                      </div>
+                      {editingProject && (
+                        <div>
+                          <Label htmlFor="progress_percentage">Progress %</Label>
+                          <Input
+                            id="progress_percentage"
+                            name="progress_percentage"
+                            type="number"
+                            min="0"
+                            max="100"
+                            defaultValue={editingProject?.progress_percentage || ""}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="project_address">Project Address</Label>
+                      <Input
+                        id="project_address"
+                        name="project_address"
+                        defaultValue={editingProject?.project_address || ""}
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="start_date">Start Date</Label>
+                        <Input
+                          id="start_date"
+                          name="start_date"
+                          type="date"
+                          defaultValue={editingProject?.start_date || ""}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="estimated_completion">Estimated Completion</Label>
+                        <Input
+                          id="estimated_completion"
+                          name="estimated_completion"
+                          type="date"
+                          defaultValue={editingProject?.estimated_completion || ""}
+                        />
+                      </div>
+                    </div>
+                    {editingProject && (
+                      <div>
+                        <Label htmlFor="status">Status</Label>
+                        <Select name="status" defaultValue={editingProject.status}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="planning">Planning</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className="flex justify-end space-x-2">
+                      <Button type="button" variant="outline" onClick={() => setIsProjectModalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">{editingProject ? "Update Project" : "Create Project"}</Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Project
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Address
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Progress
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {projects.map((project) => (
+                        <tr key={project.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{project.title}</div>
+                              <div className="text-sm text-gray-500">
+                                {project.square_footage?.toLocaleString() || "N/A"} sq ft
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {project.project_address}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {project.progress_percentage || 0}%
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={project.status === "completed" ? "default" : "secondary"}>
+                              {project.status}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingProject(project)
+                                setIsProjectModalOpen(true)
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDeleteProject(project.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="customers" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Customers Management</h2>
+              <Dialog open={isCustomerModalOpen} onOpenChange={setIsCustomerModalOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => setEditingCustomer(null)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Customer
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{editingCustomer ? "Edit Customer" : "Create New Customer"}</DialogTitle>
+                    <DialogDescription>
+                      {editingCustomer ? "Update customer information" : "Add a new customer to the system"}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form action={editingCustomer ? handleUpdateCustomer : handleCreateCustomer} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="first_name">First Name</Label>
+                        <Input
+                          id="first_name"
+                          name="first_name"
+                          defaultValue={editingCustomer?.first_name || ""}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="last_name">Last Name</Label>
+                        <Input
+                          id="last_name"
+                          name="last_name"
+                          defaultValue={editingCustomer?.last_name || ""}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          defaultValue={editingCustomer?.email || ""}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input id="phone" name="phone" defaultValue={editingCustomer?.phone || ""} required />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="address">Address</Label>
+                      <Input id="address" name="address" defaultValue={editingCustomer?.address || ""} required />
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="city">City</Label>
+                        <Input id="city" name="city" defaultValue={editingCustomer?.city || ""} required />
+                      </div>
+                      <div>
+                        <Label htmlFor="state">State</Label>
+                        <Input id="state" name="state" defaultValue={editingCustomer?.state || ""} required />
+                      </div>
+                      <div>
+                        <Label htmlFor="zip_code">Zip Code</Label>
+                        <Input id="zip_code" name="zip_code" defaultValue={editingCustomer?.zip_code || ""} required />
+                      </div>
+                    </div>
+                    {editingCustomer && (
+                      <div>
+                        <Label htmlFor="is_active">Status</Label>
+                        <Select name="is_active" defaultValue={editingCustomer.is_active ? "true" : "false"}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">Active</SelectItem>
+                            <SelectItem value="false">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className="flex justify-end space-x-2">
+                      <Button type="button" variant="outline" onClick={() => setIsCustomerModalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">{editingCustomer ? "Update Customer" : "Create Customer"}</Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Contact
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Address
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {customers.map((customer) => (
+                        <tr key={customer.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {customer.first_name} {customer.last_name}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{customer.email}</div>
+                            <div className="text-sm text-gray-500">{customer.phone}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {customer.city}, {customer.state} {customer.zip_code}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={customer.is_active ? "default" : "secondary"}>
+                              {customer.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingCustomer(customer)
+                                setIsCustomerModalOpen(true)
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDeleteCustomer(customer.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Users Management</h2>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Role
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Created
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {users.map((user) => (
+                        <tr key={user.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {user.first_name} {user.last_name}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={user.role === "admin" ? "default" : "secondary"}>{user.role}</Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={user.is_active ? "default" : "secondary"}>
+                              {user.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   )
 }
