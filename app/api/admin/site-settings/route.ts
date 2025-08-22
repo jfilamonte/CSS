@@ -1,56 +1,85 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/database"
-import { verifyAuth } from "@/lib/auth"
+import { supabase } from "@/lib/supabase/client"
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyAuth(request)
-    if (!user || !["admin", "staff"].includes(user.role)) {
+    console.log("[v0] Site settings API - GET request started")
+
+    // Get user from Supabase
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      console.log("[v0] Site settings API - Authentication failed:", authError)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const settings = await prisma.siteSettings.findMany({
-      orderBy: { key: "asc" },
-    })
+    // Get user profile to check role
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
 
+    if (!profile || !["admin", "staff"].includes(profile.role)) {
+      console.log("[v0] Site settings API - Insufficient permissions")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { data: settings, error: dbError } = await supabase.from("site_settings").select("*")
+
+    if (dbError) {
+      console.error("[v0] Site settings API - Database error:", dbError)
+      throw new Error(`Database query failed: ${dbError.message}`)
+    }
+
+    if (!settings) {
+      console.error("[v0] Site settings API - No settings table found")
+      throw new Error("Site settings table does not exist")
+    }
+
+    console.log("[v0] Site settings API - Success")
     return NextResponse.json({ settings })
   } catch (error) {
-    console.error("Error fetching site settings:", error)
+    console.error("[v0] Site settings API - Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await verifyAuth(request)
-    if (!user || user.role !== "admin") {
+    console.log("[v0] Site settings API - PUT request started")
+
+    // Get user from Supabase
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      console.log("[v0] Site settings API - Authentication failed:", authError)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Get user profile to check role
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+
+    if (!profile || profile.role !== "admin") {
+      console.log("[v0] Site settings API - Admin access required")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { settings } = await request.json()
 
-    // Update settings in batch
-    const updatePromises = settings.map((setting: any) =>
-      prisma.siteSettings.upsert({
-        where: { key: setting.key },
-        update: {
-          value: setting.value,
-          updated_at: new Date(),
-        },
-        create: {
-          key: setting.key,
-          value: setting.value,
-          type: setting.type || "text",
-          category: setting.category || "general",
-        },
-      }),
-    )
+    const { error: updateError } = await supabase.from("site_settings").upsert(settings)
 
-    await Promise.all(updatePromises)
+    if (updateError) {
+      console.error("[v0] Site settings API - Update error:", updateError)
+      throw new Error(`Failed to update settings: ${updateError.message}`)
+    }
 
+    console.log("[v0] Site settings API - Settings updated:", settings.length, "items")
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error updating site settings:", error)
+    console.error("[v0] Site settings API - Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

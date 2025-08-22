@@ -1,58 +1,70 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { verifyAuthEdge } from "@/lib/auth-edge"
+import { supabase } from "@/lib/supabase/client"
 
 async function requireAdmin(request: NextRequest) {
-  const user = await verifyAuthEdge(request)
-  if (!user || user.role !== "ADMIN") {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
     throw new Error("Unauthorized")
   }
-  return user
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+
+  if (!profile || profile.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  return { ...user, role: profile.role }
 }
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("[v0] Appointments API - GET request started")
     await requireAdmin(request)
 
-    const appointments = [
-      {
-        id: "1",
-        title: "Site Inspection - Johnson Garage",
-        date: new Date(),
-        time: "10:00 AM",
-        customer: "Mike Johnson",
-        staff: "John Smith",
-        type: "Site Visit",
-        status: "scheduled" as const,
-      },
-      {
-        id: "2",
-        title: "Quote Presentation - Davis Commercial",
-        date: new Date(),
-        time: "2:00 PM",
-        customer: "Sarah Davis",
-        staff: "Jane Doe",
-        type: "Quote Meeting",
-        status: "scheduled" as const,
-      },
-    ]
+    const { data: appointments, error: dbError } = await supabase
+      .from("appointments")
+      .select("*")
+      .order("created_at", { ascending: false })
 
+    if (dbError) {
+      console.error("[v0] Appointments API - Database error:", dbError)
+      throw new Error(`Failed to fetch appointments: ${dbError.message}`)
+    }
+
+    if (!appointments) {
+      console.error("[v0] Appointments API - No appointments table found")
+      throw new Error("Appointments table does not exist")
+    }
+
+    console.log("[v0] Appointments API - Success, found", appointments.length, "appointments")
     return NextResponse.json(appointments)
   } catch (error) {
-    console.error("Error fetching appointments:", error)
+    console.error("[v0] Appointments API - Error:", error)
     return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("[v0] Appointments API - POST request started")
     await requireAdmin(request)
     const data = await request.json()
 
-    // const appointment = await prisma.appointment.create({ data })
+    const { error: insertError } = await supabase.from("appointments").insert([data])
 
+    if (insertError) {
+      console.error("[v0] Appointments API - Insert error:", insertError)
+      throw new Error(`Failed to create appointment: ${insertError.message}`)
+    }
+
+    console.log("[v0] Appointments API - Appointment created:", data.title)
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error creating appointment:", error)
+    console.error("[v0] Appointments API - Error:", error)
     return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 })
   }
 }
