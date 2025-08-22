@@ -9,6 +9,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-toast": "^1.1.5",
     "@react-email/render": "latest",
     "@stripe/react-stripe-js": "latest",
     "@stripe/stripe-js": "latest",
