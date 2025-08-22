@@ -5,10 +5,11 @@ import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Star, ArrowRight, Shield, Clock, Award, Phone, Mail } from "lucide-react"
+import { Star, ArrowRight, Shield, Clock, Award, Phone, Mail, User, LogOut, LogIn } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase/client"
 
 export default function HomePage() {
   const [formData, setFormData] = useState({
@@ -17,6 +18,36 @@ export default function HomePage() {
     email: "",
     details: "",
   })
+
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Get initial session
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      setUser(session?.user ?? null)
+      setLoading(false)
+    }
+
+    getSession()
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+  }
 
   const handleCallNow = () => {
     window.location.href = "tel:+15551234567"
@@ -74,10 +105,55 @@ export default function HomePage() {
                 Contact
               </Link>
             </nav>
-            <Button onClick={handleCallNow} className="bg-green-800 hover:bg-green-900">
-              <Phone className="w-4 h-4 mr-2" />
-              Call Now
-            </Button>
+            <div className="flex items-center space-x-3">
+              {loading ? (
+                <div className="w-20 h-10 bg-gray-200 animate-pulse rounded"></div>
+              ) : user ? (
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2 text-sm text-gray-700">
+                    <User className="w-4 h-4" />
+                    <span className="hidden sm:inline">
+                      {user.user_metadata?.full_name || user.email?.split("@")[0] || "Account"}
+                    </span>
+                  </div>
+                  {user.user_metadata?.role === "admin" && (
+                    <Link href="/admin">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-green-800 text-green-800 hover:bg-green-800 hover:text-white bg-transparent"
+                      >
+                        Admin
+                      </Button>
+                    </Link>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50 bg-transparent"
+                  >
+                    <LogOut className="w-4 h-4 mr-1" />
+                    <span className="hidden sm:inline">Sign Out</span>
+                  </Button>
+                </div>
+              ) : (
+                <Link href="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-green-800 text-green-800 hover:bg-green-800 hover:text-white bg-transparent"
+                  >
+                    <LogIn className="w-4 h-4 mr-1" />
+                    Sign In
+                  </Button>
+                </Link>
+              )}
+              <Button onClick={handleCallNow} className="bg-green-800 hover:bg-green-900">
+                <Phone className="w-4 h-4 mr-2" />
+                Call Now
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -324,7 +400,7 @@ export default function HomePage() {
             ].map((testimonial, index) => (
               <Card key={index} className="border-0 shadow-lg">
                 <CardContent className="pt-6">
-                  <div className="flex items-center space-x-1 mb-4">
+                  <div className="flex items-center space-x-2 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     ))}
