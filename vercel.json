@@ -1,7 +1,7 @@
 {
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "installCommand": "npm install --legacy-peer-deps",
   "framework": "nextjs",
   "functions": {
     "app/api/**/*.ts": {
@@ -32,5 +32,8 @@
       "source": "/sitemap.xml",
       "destination": "/api/sitemap"
     }
-  ]
+  ],
+  "env": {
+    "NPM_CONFIG_PACKAGE_MANAGER": "npm"
+  }
 }
