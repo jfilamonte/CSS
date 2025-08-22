@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import Stripe from "stripe"
-import { prisma } from "@/lib/database"
+import { db } from "@/lib/database"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -29,32 +29,23 @@ export async function POST(request: NextRequest) {
         const { invoiceId } = paymentIntent.metadata
 
         if (invoiceId) {
-          // Update invoice status to PAID
-          await prisma.invoice.update({
-            where: { id: invoiceId },
-            data: {
-              status: "PAID",
-              paidDate: new Date(),
-              stripePaymentIntentId: paymentIntent.id,
-            },
+          await db.invoices.update(invoiceId, {
+            status: "PAID",
+            paidDate: new Date(),
+            stripePaymentIntentId: paymentIntent.id,
           })
 
           // Create payment record
-          const invoice = await prisma.invoice.findUnique({
-            where: { id: invoiceId },
-            include: { project: true },
-          })
+          const invoice = await db.invoices.findFirst({ id: invoiceId })
 
           if (invoice?.projectId) {
-            await prisma.payment.create({
-              data: {
-                projectId: invoice.projectId,
-                amount: paymentIntent.amount / 100, // Convert from cents
-                status: "PAID",
-                method: "STRIPE",
-                stripePaymentId: paymentIntent.id,
-                paidAt: new Date(),
-              },
+            await db.payments.create({
+              projectId: invoice.projectId,
+              amount: paymentIntent.amount / 100, // Convert from cents
+              status: "PAID",
+              method: "STRIPE",
+              stripePaymentId: paymentIntent.id,
+              paidAt: new Date(),
             })
           }
         }
@@ -65,12 +56,8 @@ export async function POST(request: NextRequest) {
         const { invoiceId: failedInvoiceId } = failedPayment.metadata
 
         if (failedInvoiceId) {
-          // Update invoice status if needed
-          await prisma.invoice.update({
-            where: { id: failedInvoiceId },
-            data: {
-              status: "PENDING", // Keep as pending for retry
-            },
+          await db.invoices.update(failedInvoiceId, {
+            status: "PENDING", // Keep as pending for retry
           })
         }
         break

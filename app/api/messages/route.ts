@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/database"
+import { db } from "@/lib/database"
 import { verifyAuth } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
@@ -13,31 +13,22 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get("projectId")
     const recipientId = searchParams.get("recipientId")
 
-    const whereClause: any = {
-      OR: [{ sender_id: user.id }, { recipient_id: user.id }],
-    }
-
-    if (projectId) {
-      whereClause.project_id = projectId
-    }
-
-    if (recipientId) {
-      whereClause.OR = [
-        { sender_id: user.id, recipient_id: recipientId },
-        { sender_id: recipientId, recipient_id: user.id },
-      ]
-    }
-
-    const messages = await prisma.message.findMany({
-      where: whereClause,
-      include: {
-        sender: {
-          select: { firstName: true, lastName: true, role: true },
-        },
+    const messages = await db.messages.findManyWithJoin(
+      {
+        projectId,
+        recipientId,
+        userId: user.id,
       },
-      orderBy: { created_at: "asc" },
-      take: 100,
-    })
+      {
+        join: {
+          sender: {
+            select: ["firstName", "lastName", "role"],
+          },
+        },
+        orderBy: { created_at: "asc" },
+        limit: 100,
+      },
+    )
 
     const formattedMessages = messages.map((msg) => ({
       id: msg.id,
@@ -69,32 +60,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Message content required" }, { status: 400 })
     }
 
-    const message = await prisma.message.create({
-      data: {
-        content: content.trim(),
-        sender_id: user.id,
-        recipient_id: recipientId,
-        project_id: projectId,
-        is_read: false,
-      },
-      include: {
-        sender: {
-          select: { firstName: true, lastName: true, role: true },
-        },
-      },
+    const message = await db.messages.createWithJoin({
+      content: content.trim(),
+      sender_id: user.id,
+      recipient_id: recipientId,
+      project_id: projectId,
+      is_read: false,
     })
 
     // Create notification for recipient
     if (recipientId) {
-      await prisma.notification.create({
-        data: {
-          user_id: recipientId,
-          type: "message",
-          title: "New Message",
-          message: `${user.firstName} ${user.lastName}: ${content.substring(0, 100)}...`,
-          action_url: `/messages?project=${projectId}`,
-          is_read: false,
-        },
+      await db.notifications.create({
+        user_id: recipientId,
+        type: "message",
+        title: "New Message",
+        message: `${user.firstName} ${user.lastName}: ${content.substring(0, 100)}...`,
+        action_url: `/messages?project=${projectId}`,
+        is_read: false,
       })
     }
 
@@ -103,8 +85,8 @@ export async function POST(request: NextRequest) {
         id: message.id,
         content: message.content,
         sender_id: message.sender_id,
-        sender_name: `${message.sender.firstName} ${message.sender.lastName}`,
-        sender_role: message.sender.role,
+        sender_name: `${user.firstName} ${user.lastName}`,
+        sender_role: user.role,
         timestamp: message.created_at.toISOString(),
         is_read: message.is_read,
       },

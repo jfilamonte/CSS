@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/database"
+import { db } from "@/lib/database"
 
 export async function GET() {
   try {
@@ -14,10 +14,7 @@ export async function GET() {
     // Generate referral code if doesn't exist
     if (!referralCode) {
       referralCode = `CSS${user.id.slice(-6).toUpperCase()}`
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { referralCode },
-      })
+      await db.user.update(user.id, { referralCode })
     }
 
     return NextResponse.json({ code: referralCode })

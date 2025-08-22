@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/database"
+import { db } from "@/lib/database"
 
 export async function GET() {
   try {
@@ -9,19 +9,18 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const photos = await prisma.projectPhoto.findMany({
-      where: {
-        project: {
-          customerId: user.id,
+    const photos = await db.projectPhotos.findManyWithJoin(
+      {},
+      {
+        join: {
+          project: {
+            select: ["id", "title"],
+            where: { customerId: user.id },
+          },
         },
+        orderBy: { createdAt: "desc" },
       },
-      include: {
-        project: {
-          select: { id: true, title: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    })
+    )
 
     const formattedPhotos = photos.map((photo) => ({
       id: `${photo.project.id}-${photo.id}`,

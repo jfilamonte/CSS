@@ -1,7 +1,7 @@
-import { PrismaClient } from "@prisma/client"
+import { createClient } from "@supabase/supabase-js"
 import bcrypt from "bcryptjs"
 
-const prisma = new PrismaClient()
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 async function main() {
   console.log("🌱 Seeding database...")
@@ -11,23 +11,27 @@ async function main() {
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || "admin123"
 
   // Check if admin already exists
-  const existingAdmin = await prisma.user.findUnique({
-    where: { email: adminEmail },
-  })
+  const { data: existingAdmin } = await supabase.from("users").select("*").eq("email", adminEmail).single()
 
   if (!existingAdmin) {
     const passwordHash = await bcrypt.hash(adminPassword, 12)
 
-    const admin = await prisma.user.create({
-      data: {
+    const { data: admin, error } = await supabase
+      .from("users")
+      .insert({
         email: adminEmail,
-        passwordHash,
-        role: "ADMIN",
-        emailVerifiedAt: new Date(),
-      },
-    })
+        password_hash: passwordHash,
+        role: "admin",
+        email_verified_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
 
-    console.log(`✅ Created admin user: ${admin.email}`)
+    if (error) {
+      console.error("❌ Error creating admin user:", error)
+    } else {
+      console.log(`✅ Created admin user: ${adminEmail}`)
+    }
   } else {
     console.log(`ℹ️  Admin user already exists: ${adminEmail}`)
   }
@@ -35,50 +39,49 @@ async function main() {
   // Create some sample leads for testing
   const sampleLeads = [
     {
-      fullName: "John Smith",
-      email: "john@example.com",
-      phone: "555-0123",
-      projectType: "Residential Garage",
-      squareFootage: "500",
-      timeline: "Within 2 weeks",
-      address: "123 Main St, Anytown, USA",
-      details: "Looking for metallic epoxy finish",
-      wantsAppointment: true,
-      status: "NEW" as const,
+      customer_name: "John Smith",
+      customer_email: "john@example.com",
+      customer_phone: "555-0123",
+      project_type: "Residential Garage",
+      square_footage: 500,
+      project_address: "123 Main St, Anytown, USA",
+      message: "Looking for metallic epoxy finish",
+      status: "new",
     },
     {
-      fullName: "Sarah Johnson",
-      email: "sarah@business.com",
-      phone: "555-0456",
-      projectType: "Commercial Warehouse",
-      squareFootage: "5000",
-      timeline: "Next month",
-      address: "456 Industrial Blvd, Business City, USA",
-      details: "High-traffic industrial flooring needed",
-      wantsAppointment: false,
-      status: "CONTACTED" as const,
+      customer_name: "Sarah Johnson",
+      customer_email: "sarah@business.com",
+      customer_phone: "555-0456",
+      project_type: "Commercial Warehouse",
+      square_footage: 5000,
+      project_address: "456 Industrial Blvd, Business City, USA",
+      message: "High-traffic industrial flooring needed",
+      status: "contacted",
     },
   ]
 
   for (const leadData of sampleLeads) {
-    const existingLead = await prisma.lead.findFirst({
-      where: { email: leadData.email },
-    })
+    const { data: existingLead } = await supabase
+      .from("quotes")
+      .select("*")
+      .eq("customer_email", leadData.customer_email)
+      .single()
 
     if (!existingLead) {
-      await prisma.lead.create({ data: leadData })
-      console.log(`✅ Created sample lead: ${leadData.fullName}`)
+      const { error } = await supabase.from("quotes").insert(leadData)
+
+      if (error) {
+        console.error(`❌ Error creating sample lead for ${leadData.customer_name}:`, error)
+      } else {
+        console.log(`✅ Created sample lead: ${leadData.customer_name}`)
+      }
     }
   }
 
   console.log("🎉 Database seeded successfully!")
 }
 
-main()
-  .catch((e) => {
-    console.error("❌ Error seeding database:", e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+main().catch((e) => {
+  console.error("❌ Error seeding database:", e)
+  process.exit(1)
+})

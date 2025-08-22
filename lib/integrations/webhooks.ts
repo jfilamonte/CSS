@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/database"
+import { db } from "@/lib/database"
 
 export const WEBHOOK_EVENTS = {
   LEAD_CREATED: "lead.created",
@@ -13,9 +13,7 @@ export const WEBHOOK_EVENTS = {
 
 export async function sendWebhook(event: string, data: any) {
   try {
-    const webhookUrls = await prisma.siteSettings.findFirst({
-      select: { webhookUrls: true },
-    })
+    const webhookUrls = await db.siteSettings.findFirst({ webhookUrls: true })
 
     if (!webhookUrls?.webhookUrls) {
       return { success: false, error: "No webhook URLs configured" }
@@ -59,32 +57,43 @@ export async function exportCRMData(type: "leads" | "quotes" | "customers" | "pr
 
     switch (type) {
       case "leads":
-        data = await prisma.lead.findMany({
-          include: { user: true },
-          orderBy: { createdAt: "desc" },
-          take: 100,
-        })
+        data = await db.leads.findManyWithJoin(
+          {},
+          {
+            join: { user: true },
+            orderBy: { createdAt: "desc" },
+            limit: 100,
+          },
+        )
         break
       case "quotes":
-        data = await prisma.quote.findMany({
-          include: { customer: true, lead: true },
-          orderBy: { createdAt: "desc" },
-          take: 100,
-        })
+        data = await db.quote.findManyWithJoin(
+          {},
+          {
+            join: { customer: true, lead: true },
+            orderBy: { createdAt: "desc" },
+            limit: 100,
+          },
+        )
         break
       case "customers":
-        data = await prisma.user.findMany({
-          where: { role: "CUSTOMER" },
-          orderBy: { createdAt: "desc" },
-          take: 100,
-        })
+        data = await db.user.findMany(
+          { role: "CUSTOMER" },
+          {
+            orderBy: { createdAt: "desc" },
+            limit: 100,
+          },
+        )
         break
       case "projects":
-        data = await prisma.project.findMany({
-          include: { customer: true, quote: true },
-          orderBy: { createdAt: "desc" },
-          take: 100,
-        })
+        data = await db.project.findManyWithJoin(
+          {},
+          {
+            join: { customer: true, quote: true },
+            orderBy: { createdAt: "desc" },
+            limit: 100,
+          },
+        )
         break
       default:
         throw new Error("Invalid export type")
