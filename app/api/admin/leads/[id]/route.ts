@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient()
 
@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const { status } = await request.json()
-    const leadId = params.id
+    const { id: leadId } = await params
 
     const { data: updatedLead, error } = await supabase
       .from("quotes")
@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient()
 
@@ -56,7 +56,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     const { status, notes } = await request.json()
-    const leadId = params.id
+    const { id: leadId } = await params
 
     const { data: updatedLead, error } = await supabase
       .from("quotes")
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient()
 
@@ -93,7 +93,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const leadId = params.id
+    const { id: leadId } = await params
 
     const { error } = await supabase.from("quotes").delete().eq("id", leadId)
 
