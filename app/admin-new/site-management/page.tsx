@@ -11,7 +11,7 @@ export default async function SiteManagementPage() {
     redirect("/auth/login")
   }
 
-  const user = await verifySession(sessionToken)
+  const user = await verifySession()
   if (!user || user.role !== "admin") {
     redirect("/auth/login")
   }
