@@ -6,8 +6,10 @@ export async function GET(request: NextRequest) {
   try {
     console.log("[v0] Site settings API - GET request started")
 
+    const supabase = await createClient()
+
     const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    // const supabase = createClient(cookieStore)
 
     // Get user from Supabase
     const {
@@ -52,8 +54,10 @@ export async function PUT(request: NextRequest) {
   try {
     console.log("[v0] Site settings API - PUT request started")
 
+    const supabase = await createClient()
+
     const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    // const supabase = createClient(cookieStore)
 
     // Get user from Supabase
     const {
