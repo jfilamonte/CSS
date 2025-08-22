@@ -18,7 +18,18 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Edit, Plus, Users, FileText, Calendar, BarChart3 } from "lucide-react"
+import {
+  Trash2,
+  Edit,
+  Plus,
+  Users,
+  FileText,
+  Calendar,
+  BarChart3,
+  Settings,
+  ImageIcon,
+  AlertCircle,
+} from "lucide-react"
 
 interface User {
   id: string
@@ -451,70 +462,108 @@ export default function AdminPortal() {
               </Button>
             </div>
           </div>
+
+          <div className="border-t">
+            <nav className="flex space-x-8 py-4">
+              <Button variant="ghost" className="flex items-center space-x-2">
+                <BarChart3 className="h-4 w-4" />
+                <span>Dashboard</span>
+              </Button>
+              <Button variant="ghost" className="flex items-center space-x-2" onClick={() => router.push("/admin/cms")}>
+                <FileText className="h-4 w-4" />
+                <span>CMS</span>
+              </Button>
+              <Button variant="ghost" className="flex items-center space-x-2" onClick={() => router.push("/admin/seo")}>
+                <Settings className="h-4 w-4" />
+                <span>SEO Settings</span>
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-2"
+                onClick={() => router.push("/admin/gallery")}
+              >
+                <ImageIcon className="h-4 w-4" />
+                <span>Gallery</span>
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-2"
+                onClick={() => router.push("/admin/error-logs")}
+              >
+                <AlertCircle className="h-4 w-4" />
+                <span>Error Logs</span>
+              </Button>
+            </nav>
+          </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="quotes">Quotes ({quotes.length})</TabsTrigger>
-            <TabsTrigger value="projects">Projects ({projects.length})</TabsTrigger>
-            <TabsTrigger value="customers">Customers ({customers.length})</TabsTrigger>
-            <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-blue-50 border-blue-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-blue-800">Total Quotes</CardTitle>
+              <FileText className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-900">{quotes.length}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-green-50 border-green-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-green-800">Active Projects</CardTitle>
+              <Calendar className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-900">{projects.length}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-purple-50 border-purple-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-purple-800">Total Customers</CardTitle>
+              <Users className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-900">{customers.length}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-orange-50 border-orange-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-800">Total Revenue</CardTitle>
+              <BarChart3 className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-900">
+                ${quotes.reduce((sum, q) => sum + (q.total_amount || 0), 0).toLocaleString()}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="quotes" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-white border shadow-sm">
+            <TabsTrigger value="quotes" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">
+              Quotes
+            </TabsTrigger>
+            <TabsTrigger
+              value="projects"
+              className="data-[state=active]:bg-green-100 data-[state=active]:text-green-900"
+            >
+              Projects
+            </TabsTrigger>
+            <TabsTrigger
+              value="customers"
+              className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
+            >
+              Customers
+            </TabsTrigger>
+            <TabsTrigger
+              value="users"
+              className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900"
+            >
+              Users
+            </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Quotes</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{quotes.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {quotes.filter((q) => q.status === "pending").length} pending
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{projects.filter((p) => p.status === "in_progress").length}</div>
-                  <p className="text-xs text-muted-foreground">{projects.length} total projects</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{customers.length}</div>
-                  <p className="text-xs text-muted-foreground">{customers.filter((c) => c.is_active).length} active</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${quotes.reduce((sum, q) => sum + (q.total_cost || 0), 0).toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Total quote value</p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
 
           <TabsContent value="quotes" className="space-y-6">
             <div className="flex justify-between items-center">
@@ -700,136 +749,179 @@ export default function AdminPortal() {
           </TabsContent>
 
           <TabsContent value="projects" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Projects Management</h2>
-              <Dialog open={isProjectModalOpen} onOpenChange={setIsProjectModalOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => setEditingProject(null)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Project
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>{editingProject ? "Edit Project" : "Create New Project"}</DialogTitle>
-                    <DialogDescription>
-                      {editingProject ? "Update project information" : "Add a new project to the system"}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form action={editingProject ? handleUpdateProject : handleCreateProject} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="title">Project Title</Label>
-                        <Input id="title" name="title" defaultValue={editingProject?.title || ""} required />
-                      </div>
-                      <div>
-                        <Label htmlFor="customer_id">Customer</Label>
-                        <Select name="customer_id" defaultValue={editingProject?.customer_id || ""}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select customer" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {customers.map((customer) => (
-                              <SelectItem key={customer.id} value={customer.id}>
-                                {customer.first_name} {customer.last_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        name="description"
-                        defaultValue={editingProject?.description || ""}
-                        rows={3}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="square_footage">Square Footage</Label>
-                        <Input
-                          id="square_footage"
-                          name="square_footage"
-                          type="number"
-                          defaultValue={editingProject?.square_footage || ""}
-                          required
-                        />
-                      </div>
-                      {editingProject && (
+            <Card className="shadow-sm border-2">
+              <CardHeader className="bg-green-50 border-b">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-green-900">Projects Management</CardTitle>
+                  <Dialog open={isProjectModalOpen} onOpenChange={setIsProjectModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-green-600 hover:bg-green-700 text-white">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Project
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
+                      <DialogHeader className="bg-green-50 -m-6 p-6 mb-6">
+                        <DialogTitle className="text-green-900">
+                          {editingProject ? "Edit Project" : "Create New Project"}
+                        </DialogTitle>
+                        <DialogDescription className="text-green-700">
+                          {editingProject ? "Update project information" : "Add a new project to the system"}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form action={editingProject ? handleUpdateProject : handleCreateProject} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="title" className="text-sm font-medium text-gray-900">
+                              Project Title *
+                            </Label>
+                            <Input
+                              id="title"
+                              name="title"
+                              defaultValue={editingProject?.title || ""}
+                              required
+                              className="mt-1 border-2 focus:border-green-500"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customer_id" className="text-sm font-medium text-gray-900">
+                              Customer *
+                            </Label>
+                            <Select name="customer_id" defaultValue={editingProject?.customer_id || ""}>
+                              <SelectTrigger className="mt-1 border-2 focus:border-green-500">
+                                <SelectValue placeholder="Select customer" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border-2">
+                                {customers.map((customer) => (
+                                  <SelectItem key={customer.id} value={customer.id}>
+                                    {customer.first_name} {customer.last_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
                         <div>
-                          <Label htmlFor="progress_percentage">Progress %</Label>
-                          <Input
-                            id="progress_percentage"
-                            name="progress_percentage"
-                            type="number"
-                            min="0"
-                            max="100"
-                            defaultValue={editingProject?.progress_percentage || ""}
+                          <Label htmlFor="description" className="text-sm font-medium text-gray-900">
+                            Description
+                          </Label>
+                          <Textarea
+                            id="description"
+                            name="description"
+                            defaultValue={editingProject?.description || ""}
+                            rows={3}
+                            className="mt-1 border-2 focus:border-green-500"
                           />
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="project_address">Project Address</Label>
-                      <Input
-                        id="project_address"
-                        name="project_address"
-                        defaultValue={editingProject?.project_address || ""}
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="start_date">Start Date</Label>
-                        <Input
-                          id="start_date"
-                          name="start_date"
-                          type="date"
-                          defaultValue={editingProject?.start_date || ""}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="estimated_completion">Estimated Completion</Label>
-                        <Input
-                          id="estimated_completion"
-                          name="estimated_completion"
-                          type="date"
-                          defaultValue={editingProject?.estimated_completion || ""}
-                        />
-                      </div>
-                    </div>
-                    {editingProject && (
-                      <div>
-                        <Label htmlFor="status">Status</Label>
-                        <Select name="status" defaultValue={editingProject.status}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="planning">Planning</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="on_hold">On Hold</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    <div className="flex justify-end space-x-2">
-                      <Button type="button" variant="outline" onClick={() => setIsProjectModalOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit">{editingProject ? "Update Project" : "Create Project"}</Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="square_footage" className="text-sm font-medium text-gray-900">
+                              Square Footage *
+                            </Label>
+                            <Input
+                              id="square_footage"
+                              name="square_footage"
+                              type="number"
+                              defaultValue={editingProject?.square_footage || ""}
+                              required
+                              className="mt-1 border-2 focus:border-green-500"
+                            />
+                          </div>
+                          {editingProject && (
+                            <div>
+                              <Label htmlFor="progress_percentage" className="text-sm font-medium text-gray-900">
+                                Progress %
+                              </Label>
+                              <Input
+                                id="progress_percentage"
+                                name="progress_percentage"
+                                type="number"
+                                min="0"
+                                max="100"
+                                defaultValue={editingProject?.progress_percentage || ""}
+                                className="mt-1 border-2 focus:border-green-500"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <Label htmlFor="project_address" className="text-sm font-medium text-gray-900">
+                            Project Address *
+                          </Label>
+                          <Input
+                            id="project_address"
+                            name="project_address"
+                            defaultValue={editingProject?.project_address || ""}
+                            required
+                            className="mt-1 border-2 focus:border-green-500"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="start_date" className="text-sm font-medium text-gray-900">
+                              Start Date
+                            </Label>
+                            <Input
+                              id="start_date"
+                              name="start_date"
+                              type="date"
+                              defaultValue={editingProject?.start_date || ""}
+                              className="mt-1 border-2 focus:border-green-500"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="estimated_completion" className="text-sm font-medium text-gray-900">
+                              Estimated Completion
+                            </Label>
+                            <Input
+                              id="estimated_completion"
+                              name="estimated_completion"
+                              type="date"
+                              defaultValue={editingProject?.estimated_completion || ""}
+                              className="mt-1 border-2 focus:border-green-500"
+                            />
+                          </div>
+                        </div>
+                        {editingProject && (
+                          <div>
+                            <Label htmlFor="status" className="text-sm font-medium text-gray-900">
+                              Status
+                            </Label>
+                            <Select name="status" defaultValue={editingProject.status}>
+                              <SelectTrigger className="mt-1 border-2 focus:border-green-500">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border-2">
+                                <SelectItem value="planning">Planning</SelectItem>
+                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="on_hold">On Hold</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                        <div className="flex justify-end space-x-2 pt-4 border-t">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setIsProjectModalOpen(false)
+                              setEditingProject(null)
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">
+                            {editingProject ? "Update Project" : "Create Project"}
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
 
-            <Card>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full">
