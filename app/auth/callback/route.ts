@@ -1,6 +1,5 @@
-import { createClient } from "@/lib/supabase/server"
+import { createServerClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
-import { ROLES } from "@/lib/auth-utils"
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -8,7 +7,7 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/"
 
   if (code) {
-    const supabase = await createClient()
+    const supabase = createServerClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
@@ -21,13 +20,11 @@ export async function GET(request: NextRequest) {
         // Get user profile to check role
         const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single()
 
-        const userRole = profile?.role?.toLowerCase()
-
-        if (userRole === ROLES.ADMIN) {
-          return NextResponse.redirect(`${origin}/admin`)
-        } else if (userRole === ROLES.CUSTOMER) {
+        if (profile?.role === "ADMIN" || profile?.role === "admin") {
+          return NextResponse.redirect(`${origin}/admin-new`)
+        } else if (profile?.role === "customer") {
           return NextResponse.redirect(`${origin}/customer-portal`)
-        } else if (userRole === ROLES.STAFF || userRole === ROLES.SALES_REP) {
+        } else if (profile?.role === "staff" || profile?.role === "sales") {
           return NextResponse.redirect(`${origin}/sales-dashboard`)
         } else {
           return NextResponse.redirect(`${origin}/auth/login`)

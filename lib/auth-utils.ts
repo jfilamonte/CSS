@@ -1,13 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 
-export const ROLES = {
-  ADMIN: "admin",
-  STAFF: "staff",
-  CUSTOMER: "customer",
-  SALES_REP: "sales_rep",
-} as const
-
 export interface User {
   id: string
   email: string
@@ -18,7 +11,7 @@ export interface User {
 
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
     const {
       data: { user: authUser },
       error: authError,
@@ -53,7 +46,7 @@ export async function requireAuth(allowedRoles?: string[]): Promise<User> {
     redirect("/auth/login")
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role.toLowerCase())) {
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
     redirect("/unauthorized")
   }
 
@@ -61,36 +54,36 @@ export async function requireAuth(allowedRoles?: string[]): Promise<User> {
 }
 
 export async function requireAdminAuth(): Promise<User> {
-  return requireAuth([ROLES.ADMIN])
+  return requireAuth(["admin", "super_admin"])
 }
 
 export async function requireSalesRepAuth(): Promise<User> {
-  return requireAuth([ROLES.SALES_REP, ROLES.ADMIN])
+  return requireAuth(["sales_rep", "salesperson", "sales", "admin"])
 }
 
 export async function requireCustomerAuth(): Promise<User> {
-  return requireAuth([ROLES.CUSTOMER])
+  return requireAuth(["customer"])
 }
 
 export function hasRole(user: User | null, roles: string[]): boolean {
   if (!user) return false
-  return roles.map((r) => r.toLowerCase()).includes(user.role.toLowerCase())
+  return roles.includes(user.role)
 }
 
 export function isAdmin(user: User | null): boolean {
-  return hasRole(user, [ROLES.ADMIN])
+  return hasRole(user, ["admin", "super_admin"])
 }
 
 export function isSalesRep(user: User | null): boolean {
-  return hasRole(user, [ROLES.SALES_REP])
+  return hasRole(user, ["sales_rep", "salesperson", "sales"])
 }
 
 export function isCustomer(user: User | null): boolean {
-  return hasRole(user, [ROLES.CUSTOMER])
+  return hasRole(user, ["customer"])
 }
 
 export async function signInAction(email: string, password: string) {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -114,7 +107,7 @@ export async function signUpAction(
     role?: string
   },
 ) {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -132,6 +125,6 @@ export async function signUpAction(
 }
 
 export async function signOutAction() {
-  const supabase = await createClient()
+  const supabase = createClient()
   await supabase.auth.signOut()
 }

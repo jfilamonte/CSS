@@ -39,7 +39,6 @@
     "react": "^19",
     "react-day-picker": "^8.10.1",
     "react-dom": "^19",
-    "react-hot-toast": "latest",
     "recharts": "latest",
     "resend": "latest",
     "sonner": "latest",

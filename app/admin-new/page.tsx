@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { AdminDashboardNew } from "@/components/admin-dashboard-new"
-import { createClient } from "@/lib/supabase/client"
+import { requireAdmin } from "@/lib/auth"
 import { useRouter } from "next/navigation"
-import { ROLES } from "@/lib/auth-utils"
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -14,36 +13,16 @@ export default function AdminPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("[v0] Checking authentication...")
+        console.log("[v0] Checking admin authentication...")
 
-        const supabase = createClient()
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser()
+        const user = await requireAdmin()
 
-        if (error || !user) {
-          console.log("[v0] No authenticated user, redirecting to login")
-          router.push("/auth/login")
-          return
+        if (user) {
+          setIsAuthenticated(true)
+          console.log("[v0] Admin authentication successful")
         }
-
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", user.id)
-          .single()
-
-        if (userError || userData?.role?.toLowerCase() !== ROLES.ADMIN) {
-          console.log("[v0] User is not admin, redirecting")
-          router.push("/auth/login")
-          return
-        }
-
-        setIsAuthenticated(true)
-        console.log("[v0] Authentication successful")
       } catch (error) {
-        console.error("[v0] Authentication error:", error)
+        console.error("[v0] Admin authentication failed:", error)
         router.push("/auth/login")
       } finally {
         setIsLoading(false)

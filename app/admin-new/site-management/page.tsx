@@ -1,18 +1,11 @@
 import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
-import { verifySession } from "@/lib/auth"
+import { requireAdmin } from "@/lib/auth"
 import AdminSiteManager from "@/components/admin-site-manager"
 
 export default async function SiteManagementPage() {
-  const cookieStore = cookies()
-  const sessionToken = cookieStore.get("session_token")?.value
-
-  if (!sessionToken) {
-    redirect("/auth/login")
-  }
-
-  const user = await verifySession(sessionToken)
-  if (!user || user.role !== "admin") {
+  try {
+    await requireAdmin()
+  } catch (error) {
     redirect("/auth/login")
   }
 

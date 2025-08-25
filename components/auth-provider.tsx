@@ -4,40 +4,56 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
-import { ROLES } from "@/lib/auth-utils"
+import { ROLES, type UserRole } from "@/lib/auth"
 
 interface AuthContextType {
   user: User | null
+  userProfile: { role: UserRole; first_name?: string; last_name?: string } | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
   isAdmin: boolean
+  isSalesRep: boolean
+  isCustomer: boolean
+  isStaff: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [userProfile, setUserProfile] = useState<{ role: UserRole; first_name?: string; last_name?: string } | null>(
+    null,
+  )
   const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
+
+  const isAdmin = userProfile?.role === ROLES.ADMIN
+  const isSalesRep = userProfile?.role === ROLES.SALES_REP
+  const isCustomer = userProfile?.role === ROLES.CUSTOMER
+  const isStaff = userProfile?.role === ROLES.STAFF
 
   useEffect(() => {
+    const supabase = createClient()
+
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const supabase = createClient()
         const {
           data: { session },
         } = await supabase.auth.getSession()
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          const { data: profile } = await supabase.from("users").select("role").eq("id", session.user.id).single()
+          const { data: profile } = await supabase
+            .from("users")
+            .select("role, first_name, last_name")
+            .eq("id", session.user.id)
+            .single()
 
-          setIsAdmin(profile?.role?.toLowerCase() === ROLES.ADMIN)
+          setUserProfile(profile)
         }
       } catch (error) {
-        console.error("Error getting initial session:", error)
+        console.error("[v0] Error getting initial session:", error)
       } finally {
         setLoading(false)
       }
@@ -46,7 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession()
 
     // Listen for auth changes
-    const supabase = createClient()
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -54,11 +69,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        const { data: profile } = await supabase.from("users").select("role").eq("id", session.user.id).single()
+        const { data: profile } = await supabase
+          .from("users")
+          .select("role, first_name, last_name")
+          .eq("id", session.user.id)
+          .single()
 
-        setIsAdmin(profile?.role?.toLowerCase() === ROLES.ADMIN)
+        setUserProfile(profile)
       } else {
-        setIsAdmin(false)
+        setUserProfile(null)
       }
 
       setLoading(false)
@@ -95,16 +114,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const supabase = createClient()
       await supabase.auth.signOut()
     } catch (error) {
-      console.error("Error signing out:", error)
+      console.error("[v0] Error signing out:", error)
     }
   }
 
   const value = {
     user,
+    userProfile,
     loading,
     signIn,
     signOut,
     isAdmin,
+    isSalesRep,
+    isCustomer,
+    isStaff,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
