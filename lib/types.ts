@@ -76,7 +76,7 @@ export interface LeadWithRelations extends Lead {
   submittedBy?: User | null
   assignedTo?: User | null
   quotes?: Quote[]
-  activities?: any[] // LeadActivity is assumed to be declared elsewhere
+  activities?: LeadActivity[] // LeadActivity is assumed to be declared elsewhere
 }
 
 export interface QuoteWithRelations extends Quote {
@@ -91,9 +91,9 @@ export interface ProjectWithRelations extends Project {
   customer: User
   manager?: User | null
   quote: Quote & { lead: Lead; quoteItems?: any[] }
-  tasks?: any[] // ProjectTask is assumed to be declared elsewhere
-  files?: any[] // ProjectFile is assumed to be declared elsewhere
-  payments?: any[] // Payment is assumed to be declared elsewhere
+  tasks?: ProjectTask[] // ProjectTask is assumed to be declared elsewhere
+  files?: ProjectFile[] // ProjectFile is assumed to be declared elsewhere
+  payments?: Payment[] // Payment is assumed to be declared elsewhere
 }
 
 // Dashboard data types
@@ -344,7 +344,54 @@ export interface SalesRepBlockedTime {
 }
 
 // Declare missing types
-type LeadActivity = any // Placeholder for actual type
-type ProjectTask = any // Placeholder for actual type
-type ProjectFile = any // Placeholder for actual type
-type Payment = any // Placeholder for actual type
+export interface LeadActivity {
+  id: string
+  lead_id: string
+  activity_type: ActivityType
+  title: string
+  description?: string
+  scheduled_date?: string
+  completed_date?: string
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectTask {
+  id: string
+  project_id: string
+  title: string
+  description?: string
+  status: TaskStatus
+  priority: Priority
+  assigned_to?: string
+  due_date?: string
+  completed_date?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectFile {
+  id: string
+  project_id: string
+  file_name: string
+  file_url: string
+  file_type: string
+  file_size: number
+  category: FileCategory
+  uploaded_by: string
+  created_at: string
+}
+
+export interface Payment {
+  id: string
+  project_id?: string
+  invoice_id?: string
+  amount: number
+  payment_method: PaymentMethod
+  status: PaymentStatus
+  stripe_payment_intent_id?: string
+  transaction_date: string
+  created_at: string
+  updated_at: string
+}

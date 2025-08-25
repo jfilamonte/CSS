@@ -20,6 +20,11 @@ export async function GET(request: NextRequest) {
       filters: { customerId: user.id },
     })
 
+    const appointments = await db.appointments.findManyWithJoin(
+      { customer_id: user.id },
+      { orderBy: { scheduled_date: "asc" } },
+    )
+
     // Calculate stats
     const activeQuotes = leads.filter((lead) =>
       ["NEW", "CONTACTED", "ESTIMATE_SENT", "SCHEDULED"].includes(lead.status),
@@ -27,13 +32,20 @@ export async function GET(request: NextRequest) {
 
     const activeProjects = projects.filter((project) => project.status === "IN_PROGRESS").length
 
+    const upcomingAppointments = appointments.filter(
+      (apt) => new Date(apt.scheduled_date) >= new Date() && apt.status === "scheduled",
+    ).length
+
     // Calculate total investment from all quotes/projects
-    const totalInvestment = projects.reduce((sum, project) => sum + project.quote.totalCost.toNumber(), 0)
+    const totalInvestment = projects.reduce((sum, project) => {
+      const cost = project.quote?.totalCost || 0
+      return sum + (typeof cost === "number" ? cost : Number.parseFloat(cost.toString()) || 0)
+    }, 0)
 
     const stats = {
       activeQuotes,
       activeProjects,
-      upcomingAppointments: 0, // TODO: Implement appointments
+      upcomingAppointments,
       totalInvestment,
     }
 
