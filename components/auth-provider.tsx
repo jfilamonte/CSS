@@ -32,8 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           const { data: profile } = await supabase.from("users").select("role").eq("id", session.user.id).single()
 
-          const userRole = profile?.role?.toLowerCase()
-          setIsAdmin(userRole === "admin" || userRole === "super_admin")
+          setIsAdmin(profile?.role === "admin" || profile?.role === "ADMIN")
         }
       } catch (error) {
         console.error("Error getting initial session:", error)
@@ -54,8 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         const { data: profile } = await supabase.from("users").select("role").eq("id", session.user.id).single()
 
-        const userRole = profile?.role?.toLowerCase()
-        setIsAdmin(userRole === "admin" || userRole === "super_admin")
+        setIsAdmin(profile?.role === "admin" || profile?.role === "ADMIN")
       } else {
         setIsAdmin(false)
       }

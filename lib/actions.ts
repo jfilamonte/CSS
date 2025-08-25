@@ -29,10 +29,9 @@ export async function signIn(prevState: any, formData: FormData) {
   if (result.user) {
     console.log("[v0] Sign in successful for:", result.user.email, "Role:", result.user.role)
 
-    const userRole = result.user.role.toLowerCase()
-    if (userRole === "admin" || userRole === "super_admin") {
+    if (result.user.role === "ADMIN") {
       redirect("/admin-new")
-    } else if (userRole === "staff" || userRole === "sales_person" || userRole === "salesperson") {
+    } else if (result.user.role === "STAFF") {
       redirect("/sales-dashboard")
     } else {
       redirect("/customer-portal")
@@ -57,7 +56,7 @@ export async function signInCustomer(prevState: any, formData: FormData) {
     return { error: result.error || "Authentication failed" }
   }
 
-  if (result.user && result.user.role.toLowerCase() === "customer") {
+  if (result.user && result.user.role === "CUSTOMER") {
     redirect("/customer-portal")
   } else {
     return { error: "Invalid customer credentials" }
@@ -96,7 +95,7 @@ export async function registerCustomer(prevState: any, formData: FormData) {
     firstName,
     lastName,
     phone,
-    role: "customer", // Use lowercase role to match database
+    role: "CUSTOMER",
   })
 
   if (!result.success) {
@@ -129,16 +128,11 @@ export async function loginSalesRep(prevState: any, formData: FormData) {
     return { error: result.error || "Authentication failed" }
   }
 
-  if (result.user) {
-    const userRole = result.user.role.toLowerCase()
-    if (userRole === "staff" || userRole === "admin" || userRole === "sales_person" || userRole === "salesperson") {
-      redirect("/sales-dashboard")
-    } else {
-      return { error: "Invalid staff credentials" }
-    }
+  if (result.user && (result.user.role === "STAFF" || result.user.role === "ADMIN")) {
+    redirect("/sales-dashboard")
+  } else {
+    return { error: "Invalid staff credentials" }
   }
-
-  return { error: "Authentication failed" }
 }
 
 export async function blockSalesRepTime(formData: FormData) {

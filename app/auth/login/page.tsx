@@ -47,12 +47,12 @@ export default function LoginPage() {
           return
         }
 
-        const userRole = userProfile?.role?.toLowerCase() || "customer"
+        const userRole = userProfile?.role || "customer"
 
         // Redirect based on role
-        if (userRole === "admin" || userRole === "super_admin") {
-          router.push("/admin-new")
-        } else if (userRole === "staff" || userRole === "sales_person" || userRole === "salesperson") {
+        if (userRole === "admin" || userRole === "ADMIN") {
+          router.push("/admin")
+        } else if (userRole === "staff" || userRole === "STAFF") {
           router.push("/sales-dashboard")
         } else {
           router.push("/customer-portal")
