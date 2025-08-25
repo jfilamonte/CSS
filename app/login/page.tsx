@@ -1,10 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,65 +13,24 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const { signIn, loading } = useAuth()
   const router = useRouter()
-  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setError("")
 
-    try {
-      console.log("[v0] Login attempt started for:", email)
+    console.log("[v0] Login form submitted for:", email)
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+    const { error: signInError } = await signIn(email, password)
 
-      if (error) {
-        console.log("[v0] Login error:", error.message)
-        setError(error.message)
-        return
-      }
-
-      if (data.user) {
-        console.log("[v0] User authenticated, checking admin role")
-        // Check if user has admin role
-        const { data: profile, error: profileError } = await supabase
-          .from("user_profiles")
-          .select("role")
-          .eq("id", data.user.id)
-          .single()
-
-        if (profileError) {
-          console.log("[v0] Profile check error:", profileError.message)
-          // If no profile exists, create one with admin role for first user
-          const { error: insertError } = await supabase
-            .from("user_profiles")
-            .insert([{ id: data.user.id, role: "admin", email: data.user.email }])
-
-          if (!insertError) {
-            console.log("[v0] Created admin profile, redirecting to admin")
-            router.push("/admin")
-            return
-          }
-        }
-
-        if (profile?.role === "admin") {
-          console.log("[v0] Admin role confirmed, redirecting")
-          router.push("/admin")
-        } else {
-          setError("Access denied. Admin privileges required.")
-        }
-      }
-    } catch (err) {
-      console.log("[v0] Unexpected login error:", err)
-      setError("An unexpected error occurred")
-    } finally {
-      setLoading(false)
+    if (signInError) {
+      console.log("[v0] Login failed:", signInError.message)
+      setError(signInError.message)
+    } else {
+      console.log("[v0] Login successful, redirecting to admin")
+      router.push("/admin")
     }
   }
 

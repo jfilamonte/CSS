@@ -30,10 +30,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          // Check if user is admin
-          const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single()
+          const { data: profile } = await supabase.from("users").select("role").eq("id", session.user.id).single()
 
-          setIsAdmin(profile?.role === "admin")
+          setIsAdmin(profile?.role === "admin" || profile?.role === "ADMIN")
         }
       } catch (error) {
         console.error("Error getting initial session:", error)
@@ -52,10 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        // Check if user is admin
-        const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single()
+        const { data: profile } = await supabase.from("users").select("role").eq("id", session.user.id).single()
 
-        setIsAdmin(profile?.role === "admin")
+        setIsAdmin(profile?.role === "admin" || profile?.role === "ADMIN")
       } else {
         setIsAdmin(false)
       }
@@ -68,18 +66,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log("[v0] Attempting sign in for:", email)
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
+
+      if (error) {
+        console.log("[v0] Sign in error:", error.message)
+      } else {
+        console.log("[v0] Sign in successful")
+      }
+
       return { error }
     } catch (error) {
+      console.log("[v0] Sign in exception:", error)
       return { error }
     }
   }
 
   const signOut = async () => {
     try {
+      console.log("[v0] Signing out user")
       await supabase.auth.signOut()
     } catch (error) {
       console.error("Error signing out:", error)
