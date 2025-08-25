@@ -21,15 +21,13 @@ export default function SalesLoginPage() {
           // Check if user is a sales rep
           const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).single()
 
-          const normalizedRole = userData?.role?.toLowerCase()
-
-          if (normalizedRole === "staff") {
+          if (userData?.role === "sales_person") {
             router.push("/sales-dashboard")
             return
-          } else if (normalizedRole === "customer") {
+          } else if (userData?.role === "customer") {
             router.push("/customer-portal")
             return
-          } else if (normalizedRole === "admin") {
+          } else {
             router.push("/admin-new")
             return
           }
