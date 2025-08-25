@@ -12,8 +12,6 @@ import { useState } from "react"
 import { useAuth } from "@/components/auth-provider"
 
 export default function HomePage() {
-  console.log("[v0] HomePage component rendering")
-
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -22,7 +20,6 @@ export default function HomePage() {
   })
 
   const { user, loading, signOut, isAdmin } = useAuth()
-  console.log("[v0] Auth state:", { user: !!user, loading, isAdmin })
 
   const handleCallNow = () => {
     window.location.href = "tel:+15551234567"
@@ -30,7 +27,6 @@ export default function HomePage() {
 
   const handleQuoteSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[v0] Quote form submitted:", formData)
     try {
       const response = await fetch("/api/quotes", {
         method: "POST",
@@ -47,7 +43,6 @@ export default function HomePage() {
         alert("There was an error submitting your quote request. Please try again.")
       }
     } catch (error) {
-      console.error("[v0] Quote submission error:", error)
       alert("There was an error submitting your quote request. Please try again.")
     }
   }
@@ -58,19 +53,6 @@ export default function HomePage() {
       [e.target.name]: e.target.value,
     })
   }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 bg-green-800 rounded animate-pulse mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  console.log("[v0] Rendering full homepage")
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">

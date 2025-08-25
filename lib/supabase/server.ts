@@ -1,22 +1,7 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 
-export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("[v0] Missing Supabase environment variables")
-    throw new Error("Missing Supabase environment variables")
-  }
-
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey)
-}
-
-export function createServerClient() {
-  return createClient()
-}
-
-export async function getSupabaseClient() {
+export async function createClient() {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -26,7 +11,24 @@ export async function getSupabaseClient() {
       throw new Error("Missing Supabase environment variables")
     }
 
-    const client = createSupabaseClient(supabaseUrl, supabaseAnonKey)
+    const cookieStore = await cookies()
+
+    const client = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+          } catch {
+            // The "setAll" method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    })
 
     if (!client) {
       console.error("[v0] Failed to create Supabase client")
@@ -41,7 +43,7 @@ export async function getSupabaseClient() {
   }
 }
 
-export function getSupabaseClientSync() {
+export function createClientSync() {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -51,7 +53,16 @@ export function getSupabaseClientSync() {
       throw new Error("Missing Supabase environment variables")
     }
 
-    const client = createSupabaseClient(supabaseUrl, supabaseAnonKey)
+    const client = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return []
+        },
+        setAll() {
+          // No-op for API routes
+        },
+      },
+    })
 
     console.log("[v0] Supabase client created successfully (sync)")
     return client
@@ -60,3 +71,5 @@ export function getSupabaseClientSync() {
     throw error
   }
 }
+
+export { createServerClient }

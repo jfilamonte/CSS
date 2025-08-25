@@ -48,7 +48,6 @@ model User {
   projectsManaged Project[] @relation("ProjectManager")
   customerProjects Project[] @relation("ProjectCustomer")
   notifications   Notification[]
-  invoices        Invoice[] @relation("CustomerInvoices")
   
   @@map("users")
 }
@@ -233,7 +232,6 @@ model Project {
   files          ProjectFile[]
   payments       Payment[]
   notifications  Notification[]
-  invoices       Invoice[]
 
   @@map("projects")
 }
@@ -432,31 +430,6 @@ model SeoSettings {
   @@map("seo_settings")
 }
 
-model Invoice {
-  id            String    @id @default(cuid())
-  invoiceNumber String    @unique
-  customerId    String
-  customer      User      @relation("CustomerInvoices", fields: [customerId], references: [id])
-  projectId     String?
-  project       Project?  @relation(fields: [projectId], references: [id])
-  
-  amount        Decimal
-  status        InvoiceStatus @default(PENDING)
-  dueDate       DateTime
-  paidDate      DateTime?
-  
-  // Line items as JSON for flexibility
-  lineItems     Json?
-  
-  // Payment tracking
-  stripePaymentIntentId String?
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@map("invoices")
-}
-
 enum Role {
   ADMIN
   STAFF
@@ -538,12 +511,4 @@ enum ActivityType {
 enum TokenPurpose {
   VERIFY_EMAIL
   RESET_PASSWORD
-}
-
-enum InvoiceStatus {
-  PENDING
-  PAID
-  OVERDUE
-  CANCELLED
-  REFUNDED
 }

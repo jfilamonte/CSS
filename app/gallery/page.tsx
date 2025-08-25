@@ -1,51 +1,9 @@
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import Image from "next/image"
-import { createClient } from "@/lib/supabase/server"
 
-async function getGalleryImages() {
-  try {
-    const supabase = await createClient()
-
-    const { data: projects, error } = await supabase
-      .from("projects")
-      .select("id, title, project_photos, created_at")
-      .not("project_photos", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(12)
-
-    if (error) {
-      console.error("Database error:", error)
-      return []
-    }
-
-    const images =
-      projects?.flatMap((project) => {
-        const photos = project.project_photos as any[]
-        return (
-          photos?.map((photo) => ({
-            id: `${project.id}-${photo.id || Math.random()}`,
-            title: photo.title || project.title,
-            url: photo.url,
-            description: photo.description || `Photo from ${project.title}`,
-            project_id: project.id,
-            created_at: project.created_at,
-          })) || []
-        )
-      }) || []
-
-    return images
-  } catch (error) {
-    console.error("Failed to fetch gallery images:", error)
-    return []
-  }
-}
-
-export default async function GalleryPage() {
-  const galleryImages = await getGalleryImages()
-
-  // Fallback static projects if no dynamic content
-  const staticProjects = [
+export default function GalleryPage() {
+  const projects = [
     {
       title: "Modern Garage Transformation",
       image: "/placeholder-rahif.png",
@@ -78,18 +36,16 @@ export default async function GalleryPage() {
     },
   ]
 
-  const projects = galleryImages.length > 0 ? galleryImages : staticProjects
-
   return (
     <div className="min-h-screen bg-gray-50">
       <SiteHeader />
 
       <main>
         {/* Hero Section */}
-        <section className="bg-green-800 text-white py-16">
+        <section className="bg- text-white py-16 bg-green-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Project Gallery</h1>
-            <p className="text-xl text-green-100 max-w-3xl mx-auto">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-green-800">Project Gallery</h1>
+            <p className="text-xl text-blue-100 max-w-3xl mx-auto bg-green-800">
               See our craftsmanship in action with these completed projects
             </p>
           </div>
@@ -101,12 +57,12 @@ export default async function GalleryPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {projects.map((project, index) => (
                 <div
-                  key={galleryImages.length > 0 ? project.id : index}
+                  key={index}
                   className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   <div className="relative h-64">
                     <Image
-                      src={project.url || project.image || "/placeholder.svg"}
+                      src={project.image || "/placeholder.svg"}
                       alt={project.title}
                       fill
                       className="object-cover"
