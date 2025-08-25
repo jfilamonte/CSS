@@ -15,6 +15,7 @@ export const ROLES = {
   ADMIN: "admin",
   CUSTOMER: "customer",
   SALES_REP: "sales_rep",
+  SALES_PERSON: "sales_rep", // Alias for backward compatibility
   STAFF: "staff",
 } as const
 
@@ -96,7 +97,12 @@ export async function requireStaff(): Promise<User> {
 
 export function hasRole(user: User | null, roles: UserRole[]): boolean {
   if (!user) return false
-  return roles.includes(user.role as UserRole)
+
+  // Normalize user role to handle legacy variations
+  const normalizedUserRole = normalizeRole(user.role)
+  const normalizedRoles = roles.map((role) => normalizeRole(role))
+
+  return normalizedRoles.includes(normalizedUserRole as UserRole)
 }
 
 export function isAdmin(user: User | null): boolean {
@@ -181,6 +187,17 @@ export async function signOut() {
   }
 }
 
+export async function registerUser(userData: {
+  email: string
+  password: string
+  first_name: string
+  last_name: string
+  phone?: string
+  role: UserRole
+}) {
+  return signUp(userData)
+}
+
 export async function refreshSession(): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
@@ -195,4 +212,15 @@ export async function refreshSession(): Promise<{ success: boolean; error?: stri
     console.error("[v0] Refresh session error:", error)
     return { success: false, error: "Session refresh failed" }
   }
+}
+
+function normalizeRole(role: string): string {
+  const roleMap: Record<string, string> = {
+    sales_person: "sales_rep",
+    salesperson: "sales_rep",
+    sales: "sales_rep",
+    super_admin: "admin",
+  }
+
+  return roleMap[role.toLowerCase()] || role.toLowerCase()
 }

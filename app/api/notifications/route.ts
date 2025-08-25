@@ -1,26 +1,33 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/database"
-import { verifyAuth, requireStaff } from "@/lib/auth"
+import { requireAuth, requireStaff } from "@/lib/auth"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyAuth(request)
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const user = await requireAuth()
 
     const { searchParams } = new URL(request.url)
     const unreadOnly = searchParams.get("unread") === "true"
 
     const supabase = await createClient()
 
-    const { data: notifications } = await supabase
+    let query = supabase
       .from("email_notifications")
       .select("*")
       .eq("recipient_email", user.email)
       .order("created_at", { ascending: false })
       .limit(50)
+
+    if (unreadOnly) {
+      query = query.eq("status", "pending")
+    }
+
+    const { data: notifications, error } = await query
+
+    if (error) {
+      console.error("[v0] Database error:", error)
+      return NextResponse.json({ error: "Database error" }, { status: 500 })
+    }
 
     return NextResponse.json({ notifications: notifications || [] })
   } catch (error) {
@@ -31,7 +38,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireStaff(request)
+    const user = await requireStaff()
 
     const { userId, type, title, message, actionUrl } = await request.json()
 
@@ -49,7 +56,10 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error("[v0] Database error:", error)
+      return NextResponse.json({ error: "Failed to create notification" }, { status: 500 })
+    }
 
     return NextResponse.json({ notification })
   } catch (error) {
@@ -60,27 +70,28 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await verifyAuth(request)
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const user = await requireAuth()
 
     const { notificationIds, markAsRead } = await request.json()
+    const supabase = await createClient()
 
-    await prisma.notification.updateMany({
-      where: {
-        id: { in: notificationIds },
-        user_id: user.id,
-      },
-      data: {
-        is_read: markAsRead,
-        read_at: markAsRead ? new Date() : null,
-      },
-    })
+    const { error } = await supabase
+      .from("email_notifications")
+      .update({
+        status: markAsRead ? "read" : "pending",
+        read_at: markAsRead ? new Date().toISOString() : null,
+      })
+      .in("id", notificationIds)
+      .eq("recipient_email", user.email)
+
+    if (error) {
+      console.error("[v0] Database error:", error)
+      return NextResponse.json({ error: "Failed to update notifications" }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error updating notifications:", error)
+    console.error("[v0] Error updating notifications:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

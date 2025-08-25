@@ -1,29 +1,41 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getCurrentUser } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { requireCustomer } from "@/lib/auth"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    const user = await requireCustomer()
 
-    if (!user || user.role !== "CUSTOMER") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const supabase = await createClient()
 
     // Get quotes for leads submitted by this customer
-    const customerLeads = await db.lead.findMany({
-      filters: { submittedById: user.id },
-    })
+    const { data: customerLeads, error: leadsError } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("submitted_by_id", user.id)
 
-    const leadIds = customerLeads.map((lead) => lead.id)
+    if (leadsError) {
+      console.error("[v0] Error fetching customer leads:", leadsError)
+      return NextResponse.json({ error: "Database error" }, { status: 500 })
+    }
+
+    const leadIds = customerLeads?.map((lead) => lead.id) || []
+
+    if (leadIds.length === 0) {
+      return NextResponse.json([])
+    }
 
     // Get quotes for these leads
-    const quotes = await db.quote.findMany()
-    const customerQuotes = quotes.filter((quote) => leadIds.includes(quote.leadId))
+    const { data: quotes, error: quotesError } = await supabase.from("quotes").select("*").in("lead_id", leadIds)
 
-    return NextResponse.json(customerQuotes)
+    if (quotesError) {
+      console.error("[v0] Error fetching quotes:", quotesError)
+      return NextResponse.json({ error: "Database error" }, { status: 500 })
+    }
+
+    return NextResponse.json(quotes || [])
   } catch (error) {
-    console.error("Customer quotes error:", error)
+    console.error("[v0] Customer quotes error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
