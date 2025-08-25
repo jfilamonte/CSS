@@ -38,7 +38,7 @@ export default function LoginPage() {
         const { data: userProfile, error: profileError } = await supabase
           .from("users")
           .select("role")
-          .eq("email", email)
+          .eq("id", data.user.id)
           .single()
 
         if (profileError) {
@@ -47,12 +47,12 @@ export default function LoginPage() {
           return
         }
 
-        const userRole = userProfile?.role?.toLowerCase() || "customer"
-        console.log("[v0] User role:", userRole)
+        const userRole = userProfile?.role || "customer"
 
-        if (userRole === "admin" || userRole === "super_admin") {
-          router.push("/admin-new")
-        } else if (userRole === "staff" || userRole === "sales_person" || userRole === "salesperson") {
+        // Redirect based on role
+        if (userRole === "admin" || userRole === "ADMIN") {
+          router.push("/admin")
+        } else if (userRole === "staff" || userRole === "STAFF") {
           router.push("/sales-dashboard")
         } else {
           router.push("/customer-portal")

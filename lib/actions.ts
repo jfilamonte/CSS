@@ -29,16 +29,11 @@ export async function signIn(prevState: any, formData: FormData) {
   if (result.user) {
     console.log("[v0] Sign in successful for:", result.user.email, "Role:", result.user.role)
 
-    const userRole = result.user.role.toLowerCase()
-
-    if (userRole === "admin" || userRole === "super_admin") {
+    if (result.user.role === "ADMIN") {
       redirect("/admin-new")
-    } else if (userRole === "staff" || userRole === "sales_person" || userRole === "salesperson") {
+    } else if (result.user.role === "STAFF") {
       redirect("/sales-dashboard")
-    } else if (userRole === "customer") {
-      redirect("/customer-portal")
     } else {
-      console.log("[v0] Unknown role:", result.user.role)
       redirect("/customer-portal")
     }
   }
@@ -61,7 +56,7 @@ export async function signInCustomer(prevState: any, formData: FormData) {
     return { error: result.error || "Authentication failed" }
   }
 
-  if (result.user && result.user.role.toLowerCase() === "customer") {
+  if (result.user && result.user.role === "CUSTOMER") {
     redirect("/customer-portal")
   } else {
     return { error: "Invalid customer credentials" }
@@ -100,13 +95,14 @@ export async function registerCustomer(prevState: any, formData: FormData) {
     firstName,
     lastName,
     phone,
-    role: "customer",
+    role: "CUSTOMER",
   })
 
   if (!result.success) {
     return { error: result.error || "Registration failed" }
   }
 
+  // Auto sign in after registration
   const { ip, userAgent } = await getClientInfo()
   const signInResult = await authSignIn(email, password, ip, userAgent)
 
@@ -132,15 +128,7 @@ export async function loginSalesRep(prevState: any, formData: FormData) {
     return { error: result.error || "Authentication failed" }
   }
 
-  const userRole = result.user?.role.toLowerCase()
-  if (
-    result.user &&
-    (userRole === "staff" ||
-      userRole === "admin" ||
-      userRole === "super_admin" ||
-      userRole === "sales_person" ||
-      userRole === "salesperson")
-  ) {
+  if (result.user && (result.user.role === "STAFF" || result.user.role === "ADMIN")) {
     redirect("/sales-dashboard")
   } else {
     return { error: "Invalid staff credentials" }
