@@ -1,7 +1,7 @@
-import { createClient } from "@supabase/supabase-js"
+import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const prisma = new PrismaClient()
 
 async function main() {
   console.log("🌱 Seeding database...")
@@ -11,27 +11,23 @@ async function main() {
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || "admin123"
 
   // Check if admin already exists
-  const { data: existingAdmin } = await supabase.from("users").select("*").eq("email", adminEmail).single()
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: adminEmail },
+  })
 
   if (!existingAdmin) {
     const passwordHash = await bcrypt.hash(adminPassword, 12)
 
-    const { data: admin, error } = await supabase
-      .from("users")
-      .insert({
+    const admin = await prisma.user.create({
+      data: {
         email: adminEmail,
-        password_hash: passwordHash,
-        role: "admin",
-        email_verified_at: new Date().toISOString(),
-      })
-      .select()
-      .single()
+        passwordHash,
+        role: "ADMIN",
+        emailVerifiedAt: new Date(),
+      },
+    })
 
-    if (error) {
-      console.error("❌ Error creating admin user:", error)
-    } else {
-      console.log(`✅ Created admin user: ${adminEmail}`)
-    }
+    console.log(`✅ Created admin user: ${admin.email}`)
   } else {
     console.log(`ℹ️  Admin user already exists: ${adminEmail}`)
   }
@@ -39,49 +35,50 @@ async function main() {
   // Create some sample leads for testing
   const sampleLeads = [
     {
-      customer_name: "John Smith",
-      customer_email: "john@example.com",
-      customer_phone: "555-0123",
-      project_type: "Residential Garage",
-      square_footage: 500,
-      project_address: "123 Main St, Anytown, USA",
-      message: "Looking for metallic epoxy finish",
-      status: "new",
+      fullName: "John Smith",
+      email: "john@example.com",
+      phone: "555-0123",
+      projectType: "Residential Garage",
+      squareFootage: "500",
+      timeline: "Within 2 weeks",
+      address: "123 Main St, Anytown, USA",
+      details: "Looking for metallic epoxy finish",
+      wantsAppointment: true,
+      status: "NEW" as const,
     },
     {
-      customer_name: "Sarah Johnson",
-      customer_email: "sarah@business.com",
-      customer_phone: "555-0456",
-      project_type: "Commercial Warehouse",
-      square_footage: 5000,
-      project_address: "456 Industrial Blvd, Business City, USA",
-      message: "High-traffic industrial flooring needed",
-      status: "contacted",
+      fullName: "Sarah Johnson",
+      email: "sarah@business.com",
+      phone: "555-0456",
+      projectType: "Commercial Warehouse",
+      squareFootage: "5000",
+      timeline: "Next month",
+      address: "456 Industrial Blvd, Business City, USA",
+      details: "High-traffic industrial flooring needed",
+      wantsAppointment: false,
+      status: "CONTACTED" as const,
     },
   ]
 
   for (const leadData of sampleLeads) {
-    const { data: existingLead } = await supabase
-      .from("quotes")
-      .select("*")
-      .eq("customer_email", leadData.customer_email)
-      .single()
+    const existingLead = await prisma.lead.findFirst({
+      where: { email: leadData.email },
+    })
 
     if (!existingLead) {
-      const { error } = await supabase.from("quotes").insert(leadData)
-
-      if (error) {
-        console.error(`❌ Error creating sample lead for ${leadData.customer_name}:`, error)
-      } else {
-        console.log(`✅ Created sample lead: ${leadData.customer_name}`)
-      }
+      await prisma.lead.create({ data: leadData })
+      console.log(`✅ Created sample lead: ${leadData.fullName}`)
     }
   }
 
   console.log("🎉 Database seeded successfully!")
 }
 
-main().catch((e) => {
-  console.error("❌ Error seeding database:", e)
-  process.exit(1)
-})
+main()
+  .catch((e) => {
+    console.error("❌ Error seeding database:", e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

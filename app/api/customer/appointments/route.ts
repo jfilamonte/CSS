@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { prisma } from "@/lib/database"
 
 export async function GET() {
   try {
@@ -9,17 +9,15 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const appointments = await db.appointments.findManyWithJoin(
-      { customerId: user.id },
-      {
-        join: {
-          staff: {
-            select: ["firstName", "lastName"],
-          },
+    const appointments = await prisma.appointment.findMany({
+      where: { customerId: user.id },
+      include: {
+        staff: {
+          select: { firstName: true, lastName: true },
         },
-        orderBy: { scheduledDate: "asc" },
       },
-    )
+      orderBy: { scheduledDate: "asc" },
+    })
 
     const formattedAppointments = appointments.map((apt) => ({
       id: apt.id,
@@ -49,13 +47,15 @@ export async function POST(request: NextRequest) {
 
     const scheduledDate = new Date(`${date}T${time}:00`)
 
-    const appointment = await db.appointments.create({
-      customerId: user.id,
-      scheduledDate,
-      type,
-      status: "SCHEDULED",
-      notes,
-      duration: 60, // Default 1 hour
+    const appointment = await prisma.appointment.create({
+      data: {
+        customerId: user.id,
+        scheduledDate,
+        type,
+        status: "SCHEDULED",
+        notes,
+        duration: 60, // Default 1 hour
+      },
     })
 
     return NextResponse.json(appointment)

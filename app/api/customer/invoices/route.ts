@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { prisma } from "@/lib/database"
 
 export async function GET() {
   try {
@@ -9,7 +9,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const invoices = await db.invoices.findMany({ customerId: user.id }, { orderBy: { createdAt: "desc" } })
+    const invoices = await prisma.invoice.findMany({
+      where: { customerId: user.id },
+      orderBy: { createdAt: "desc" },
+    })
 
     const formattedInvoices = invoices.map((invoice) => ({
       id: invoice.id,

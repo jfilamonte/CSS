@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { prisma } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,9 +16,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const invoice = await db.invoices.findFirst({
-      id: invoiceId,
-      customerId: user.id,
+    // Check if invoice exists and belongs to user
+    const invoice = await prisma.invoice.findFirst({
+      where: {
+        id: invoiceId,
+        customerId: user.id,
+      },
     })
 
     if (!invoice) {

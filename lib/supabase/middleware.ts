@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function updateSession(request: NextRequest) {
@@ -5,12 +6,14 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  // Check for auth token in cookies instead of using full Supabase client
-  const authToken = request.cookies.get("sb-access-token") || request.cookies.get("supabase-auth-token")
-  const hasAuth = !!authToken
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (
-    !hasAuth &&
+    !user &&
     (request.nextUrl.pathname.startsWith("/admin") || request.nextUrl.pathname.startsWith("/customer-portal"))
   ) {
     const url = request.nextUrl.clone()

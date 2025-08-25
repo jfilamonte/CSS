@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyAuth } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { prisma } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
@@ -86,21 +86,21 @@ export async function GET(request: NextRequest) {
 
 async function getLiveStats() {
   try {
-    const [leads, quotes, projects] = await Promise.all([
-      db.leads?.findMany({ status: "NEW" }) || [],
-      db.quote.findMany({ status: "SENT" }),
-      db.project.findMany({ status: "IN_PROGRESS" }),
+    const [leadsCount, quotesCount, projectsCount, revenueSum] = await Promise.all([
+      prisma.lead.count({ where: { status: "NEW" } }),
+      prisma.quote.count({ where: { status: "SENT" } }),
+      prisma.project.count({ where: { status: "IN_PROGRESS" } }),
+      prisma.project.aggregate({
+        _sum: { totalCost: true },
+        where: { status: "COMPLETED" },
+      }),
     ])
 
-    // Get completed projects for revenue calculation
-    const completedProjects = await db.project.findMany({ status: "COMPLETED" })
-    const totalRevenue = completedProjects.reduce((sum, project) => sum + (project.totalCost || 0), 0)
-
     return {
-      newLeadsToday: leads.length,
-      quotesAwaitingApproval: quotes.length,
-      projectsInProgress: projects.length,
-      totalRevenue,
+      newLeadsToday: leadsCount,
+      quotesAwaitingApproval: quotesCount,
+      projectsInProgress: projectsCount,
+      totalRevenue: revenueSum._sum.totalCost || 0,
       activeUsers: Math.floor(Math.random() * 10) + 1, // Simulated for demo
     }
   } catch (error) {
@@ -112,17 +112,15 @@ async function getLiveStats() {
 async function getNewNotifications(userId: string) {
   try {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-    return await db.notifications.findMany(
-      {
+    return await prisma.notification.findMany({
+      where: {
         user_id: userId,
         is_read: false,
         created_at: { gte: fiveMinutesAgo },
       },
-      {
-        orderBy: { created_at: "desc" },
-        limit: 5,
-      },
-    )
+      orderBy: { created_at: "desc" },
+      take: 5,
+    })
   } catch (error) {
     console.error("Error fetching new notifications:", error)
     return []
@@ -132,10 +130,16 @@ async function getNewNotifications(userId: string) {
 async function getProjectUpdates(customerId: string) {
   try {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-    const allProjects = await db.project.findMany()
-    return allProjects
-      .filter((project) => project.customerId === customerId && new Date(project.updatedAt) >= fiveMinutesAgo)
-      .slice(0, 3)
+    return await prisma.project.findMany({
+      where: {
+        customerId,
+        updatedAt: { gte: fiveMinutesAgo },
+      },
+      include: {
+        quote: true,
+      },
+      take: 3,
+    })
   } catch (error) {
     console.error("Error fetching project updates:", error)
     return []

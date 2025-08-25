@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { prisma } from "@/lib/database"
 import Stripe from "stripe"
 
 let stripe: Stripe | null = null
@@ -32,10 +32,12 @@ export async function POST(request: NextRequest) {
 
     const { invoiceId } = await request.json()
 
-    const invoice = await db.invoices.findFirst({
-      id: invoiceId,
-      customerId: user.id,
-      status: "PENDING",
+    const invoice = await prisma.invoice.findFirst({
+      where: {
+        id: invoiceId,
+        customerId: user.id,
+        status: "PENDING",
+      },
     })
 
     if (!invoice) {
