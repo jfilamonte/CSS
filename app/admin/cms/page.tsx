@@ -29,7 +29,7 @@ export default function CMSPage() {
           error,
         } = await supabase.auth.getUser()
         if (error || !user) {
-          router.push("/login")
+          router.push("/auth/login")
           return
         }
 
@@ -48,7 +48,7 @@ export default function CMSPage() {
         await loadContent()
       } catch (error) {
         console.error("Auth check error:", error)
-        router.push("/login")
+        router.push("/auth/login")
       } finally {
         setLoading(false)
       }

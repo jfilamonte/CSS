@@ -115,7 +115,7 @@ export default function AdminPortal() {
 
         if (error || !user) {
           console.log("[v0] No authenticated user, redirecting to login")
-          router.push("/login")
+          router.push("/auth/login")
           return
         }
 
@@ -136,7 +136,7 @@ export default function AdminPortal() {
         await loadAllData()
       } catch (error) {
         console.error("[v0] Auth check error:", error)
-        router.push("/login")
+        router.push("/auth/login")
       } finally {
         setLoading(false)
       }
@@ -460,7 +460,7 @@ export default function AdminPortal() {
                 variant="outline"
                 onClick={async () => {
                   await supabase.auth.signOut()
-                  router.push("/login")
+                  router.push("/auth/login")
                 }}
               >
                 Sign Out

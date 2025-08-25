@@ -110,7 +110,7 @@ export default function HomePage() {
                   </Button>
                 </div>
               ) : (
-                <Link href="/login">
+                <Link href="/auth/login">
                   <Button
                     variant="outline"
                     size="sm"

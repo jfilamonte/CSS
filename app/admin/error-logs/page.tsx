@@ -25,7 +25,7 @@ export default function ErrorLogsPage() {
         } = await supabase.auth.getUser()
 
         if (error || !user) {
-          router.push("/login")
+          router.push("/auth/login")
           return
         }
 
@@ -44,7 +44,7 @@ export default function ErrorLogsPage() {
         await loadErrorLogs()
       } catch (error) {
         console.error("Auth check error:", error)
-        router.push("/login")
+        router.push("/auth/login")
       } finally {
         setLoading(false)
       }
