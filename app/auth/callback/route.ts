@@ -20,11 +20,14 @@ export async function GET(request: NextRequest) {
         // Get user profile to check role
         const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single()
 
-        // Redirect based on role
         if (profile?.role === "ADMIN" || profile?.role === "admin") {
-          return NextResponse.redirect(`${origin}/admin`)
+          return NextResponse.redirect(`${origin}/admin-new`)
+        } else if (profile?.role === "customer") {
+          return NextResponse.redirect(`${origin}/customer-portal`)
+        } else if (profile?.role === "staff" || profile?.role === "sales") {
+          return NextResponse.redirect(`${origin}/sales-dashboard`)
         } else {
-          return NextResponse.redirect(`${origin}/customer`)
+          return NextResponse.redirect(`${origin}/auth/login`)
         }
       }
     }

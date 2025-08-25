@@ -31,7 +31,11 @@ export async function updateSession(request: NextRequest) {
 
   if (
     !user &&
-    (request.nextUrl.pathname.startsWith("/admin") || request.nextUrl.pathname.startsWith("/customer-portal"))
+    (request.nextUrl.pathname.startsWith("/admin") ||
+      request.nextUrl.pathname.startsWith("/customer-portal") ||
+      request.nextUrl.pathname.startsWith("/sales-dashboard")) &&
+    !request.nextUrl.pathname.startsWith("/auth/") &&
+    request.nextUrl.pathname !== "/auth/callback"
   ) {
     const url = request.nextUrl.clone()
     url.pathname = "/auth/login"
