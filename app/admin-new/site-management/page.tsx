@@ -4,14 +4,14 @@ import { verifySession } from "@/lib/auth"
 import AdminSiteManager from "@/components/admin-site-manager"
 
 export default async function SiteManagementPage() {
-  const cookieStore = await cookies()
+  const cookieStore = cookies()
   const sessionToken = cookieStore.get("session_token")?.value
 
   if (!sessionToken) {
     redirect("/auth/login")
   }
 
-  const user = await verifySession()
+  const user = await verifySession(sessionToken)
   if (!user || user.role !== "admin") {
     redirect("/auth/login")
   }

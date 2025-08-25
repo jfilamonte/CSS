@@ -3,6 +3,7 @@ import { Resend } from "resend"
 
 function getResendClient() {
   if (typeof window !== "undefined") {
+    // Client-side, return null
     return null
   }
 
@@ -36,11 +37,6 @@ export async function POST(request: NextRequest) {
       phone: formData.get("phone") as string,
       subject: formData.get("subject") as string,
       message: formData.get("message") as string,
-    }
-
-    // Validate required fields
-    if (!contactData.firstName || !contactData.lastName || !contactData.email || !contactData.message) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     // Send notification email to business

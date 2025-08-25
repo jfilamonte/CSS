@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient()
     const {
@@ -16,8 +16,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const { name, customer, status, completion } = body
 
-    const { id } = await params
-
     // Update project
     const { data: project, error } = await supabase
       .from("projects")
@@ -28,7 +26,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         completion_percentage: completion,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id)
+      .eq("id", params.id)
       .select()
       .single()
 
@@ -44,7 +42,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient()
     const {
@@ -56,10 +54,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
-
     // Delete project
-    const { error } = await supabase.from("projects").delete().eq("id", id)
+    const { error } = await supabase.from("projects").delete().eq("id", params.id)
 
     if (error) {
       console.error("Database error:", error)
@@ -73,7 +69,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient()
     const {
@@ -85,9 +81,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
-
-    const { data: project, error } = await supabase.from("projects").select("*").eq("id", id).single()
+    const { data: project, error } = await supabase.from("projects").select("*").eq("id", params.id).single()
 
     if (error) {
       console.error("Database error:", error)

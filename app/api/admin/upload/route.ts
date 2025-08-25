@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
 
     const blob = await put(file.name, file, {
       access: "public",
+      handleUploadUrl: "/api/admin/upload",
     })
 
     const fileData = {

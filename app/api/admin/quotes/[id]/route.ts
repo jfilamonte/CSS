@@ -2,12 +2,12 @@ import { type NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth"
 import { db } from "@/lib/database"
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAdmin()
 
     const { status } = await request.json()
-    const { id: quoteId } = await params
+    const quoteId = params.id
 
     const updatedQuote = await db.quote.update(quoteId, {
       status,

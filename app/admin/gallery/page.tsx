@@ -24,23 +24,17 @@ export default function GalleryPage() {
         setImages(data.images || [])
       } else {
         const errorData = await response.text()
-        await logError(new Error(`Failed to load gallery images: ${response.status} ${errorData}`), {
-          severity: "error",
-          context: {
-            action: "load_gallery_images",
-            status: response.status,
-          },
+        await logError(new Error(`Failed to load gallery images: ${response.status} ${errorData}`), "error", {
+          action: "load_gallery_images",
+          status: response.status,
         })
         setImages([])
       }
     } catch (error) {
       console.error("Failed to load images:", error)
-      await logError(error as Error, {
-        severity: "error",
-        context: {
-          action: "load_gallery_images",
-          context: "network_error",
-        },
+      await logError(error as Error, "error", {
+        action: "load_gallery_images",
+        context: "network_error",
       })
       setImages([])
     }
@@ -65,22 +59,16 @@ export default function GalleryPage() {
         loadImages() // Refresh the gallery
       } else {
         const errorData = await response.text()
-        await logError(new Error(`File upload failed: ${response.status} ${errorData}`), {
-          severity: "error",
-          context: {
-            action: "upload_gallery_image",
-            filename: file.name,
-          },
+        await logError(new Error(`File upload failed: ${response.status} ${errorData}`), "error", {
+          action: "upload_gallery_image",
+          filename: file.name,
         })
       }
     } catch (error) {
       console.error("Upload failed:", error)
-      await logError(error as Error, {
-        severity: "error",
-        context: {
-          action: "upload_gallery_image",
-          filename: file.name,
-        },
+      await logError(error as Error, "error", {
+        action: "upload_gallery_image",
+        filename: file.name,
       })
     }
     setUploading(false)
@@ -96,22 +84,16 @@ export default function GalleryPage() {
         loadImages() // Refresh the gallery
       } else {
         const errorData = await response.text()
-        await logError(new Error(`Failed to delete image: ${response.status} ${errorData}`), {
-          severity: "error",
-          context: {
-            action: "delete_gallery_image",
-            imageId,
-          },
+        await logError(new Error(`Failed to delete image: ${response.status} ${errorData}`), "error", {
+          action: "delete_gallery_image",
+          imageId,
         })
       }
     } catch (error) {
       console.error("Delete failed:", error)
-      await logError(error as Error, {
-        severity: "error",
-        context: {
-          action: "delete_gallery_image",
-          imageId,
-        },
+      await logError(error as Error, "error", {
+        action: "delete_gallery_image",
+        imageId,
       })
     }
   }

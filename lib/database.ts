@@ -6,16 +6,6 @@ export type LeadStatus = "new" | "contacted" | "qualified" | "converted" | "lost
 export type QuoteStatus = "draft" | "sent" | "accepted" | "rejected" | "expired"
 export type ProjectStatus = "planning" | "in_progress" | "completed" | "on_hold" | "cancelled"
 
-interface DatabaseFilters {
-  [key: string]: any
-}
-
-interface DatabaseOptions {
-  orderBy?: { [key: string]: "asc" | "desc" }
-  limit?: number
-  join?: any
-}
-
 // Database helper functions using Supabase
 export const db = {
   user: {
@@ -41,7 +31,7 @@ export const db = {
       return data
     },
 
-    async findMany(filters: DatabaseFilters, options?: DatabaseOptions) {
+    async findMany(filters: any, options?: { orderBy?: any; limit?: number }) {
       const supabase = await createClient()
       let query = supabase.from("users").select("*")
 
@@ -94,17 +84,7 @@ export const db = {
       return result
     },
 
-    async update(
-      id: string,
-      data: Partial<{
-        email: string
-        first_name: string
-        last_name: string
-        phone: string
-        role: Role
-        is_active: boolean
-      }>,
-    ) {
+    async update(id: string, data: any) {
       const supabase = await createClient()
       const { data: result, error } = await supabase.from("users").update(data).eq("id", id).select().single()
 
@@ -141,7 +121,7 @@ export const db = {
       return data || []
     },
 
-    async findManyWithJoin(filters: DatabaseFilters, options?: DatabaseOptions) {
+    async findManyWithJoin(filters: any, options?: { join?: any; orderBy?: any; limit?: number }) {
       const supabase = await createClient()
       let query = supabase.from("quotes").select("*, customer:users(*), lead:leads(*)")
 
@@ -181,29 +161,6 @@ export const db = {
     }) {
       const supabase = await createClient()
       const { data: result, error } = await supabase.from("quotes").insert(data).select().single()
-
-      if (error) {
-        console.warn("Database operation failed:", error)
-        return null
-      }
-      return result
-    },
-
-    async update(
-      id: string,
-      data: Partial<{
-        customer_name: string
-        customer_email: string
-        customer_phone: string
-        project_type: string
-        square_footage: number
-        project_address: string
-        message: string
-        status: string
-      }>,
-    ) {
-      const supabase = await createClient()
-      const { data: result, error } = await supabase.from("quotes").update(data).eq("id", id).select().single()
 
       if (error) {
         console.warn("Database operation failed:", error)
