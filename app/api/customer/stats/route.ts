@@ -1,26 +1,34 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { requireCustomer } from "@/lib/auth"
-import { createClient } from "@/lib/supabase/server"
+import { getCurrentUser } from "@/lib/auth"
+import { db } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireCustomer()
+    const user = await getCurrentUser()
 
-    const supabase = await createClient()
+    if (!user || user.role !== "CUSTOMER") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
-    // Get customer's quotes
-    const { data: quotes } = await supabase.from("quotes").select("*").eq("customer_email", user.email)
+    // Get customer's leads (quote requests)
+    const leads = await db.lead.findMany({
+      filters: { submittedById: user.id },
+    })
 
     // Get customer's projects
-    const { data: projects } = await supabase.from("projects").select("*").eq("customer_id", user.id)
+    const projects = await db.project.findMany({
+      filters: { customerId: user.id },
+    })
 
     // Calculate stats
-    const activeQuotes = quotes?.filter((quote) => ["pending", "approved"].includes(quote.status)).length || 0
+    const activeQuotes = leads.filter((lead) =>
+      ["NEW", "CONTACTED", "ESTIMATE_SENT", "SCHEDULED"].includes(lead.status),
+    ).length
 
-    const activeProjects = projects?.filter((project) => project.status === "in_progress").length || 0
+    const activeProjects = projects.filter((project) => project.status === "IN_PROGRESS").length
 
-    // Calculate total investment from all projects
-    const totalInvestment = projects?.reduce((sum, project) => sum + (project.total_cost || 0), 0) || 0
+    // Calculate total investment from all quotes/projects
+    const totalInvestment = projects.reduce((sum, project) => sum + project.quote.totalCost.toNumber(), 0)
 
     const stats = {
       activeQuotes,
@@ -31,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(stats)
   } catch (error) {
-    console.error("[v0] Customer stats error:", error)
+    console.error("Customer stats error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
