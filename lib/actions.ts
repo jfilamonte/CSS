@@ -29,15 +29,11 @@ export async function signIn(prevState: any, formData: FormData) {
   if (result.user) {
     console.log("[v0] Sign in successful for:", result.user.email, "Role:", result.user.role)
 
-    if (result.user.role === "admin" || result.user.role === "super_admin") {
+    if (result.user.role === "ADMIN") {
       redirect("/admin-new")
-    } else if (
-      result.user.role === "staff" ||
-      result.user.role === "sales_person" ||
-      result.user.role === "salesperson"
-    ) {
+    } else if (result.user.role === "STAFF") {
       redirect("/sales-dashboard")
-    } else if (result.user.role === "customer") {
+    } else {
       redirect("/customer-portal")
     }
   }
@@ -60,7 +56,7 @@ export async function signInCustomer(prevState: any, formData: FormData) {
     return { error: result.error || "Authentication failed" }
   }
 
-  if (result.user && result.user.role === "customer") {
+  if (result.user && result.user.role === "CUSTOMER") {
     redirect("/customer-portal")
   } else {
     return { error: "Invalid customer credentials" }
@@ -99,7 +95,7 @@ export async function registerCustomer(prevState: any, formData: FormData) {
     firstName,
     lastName,
     phone,
-    role: "customer",
+    role: "CUSTOMER",
   })
 
   if (!result.success) {
@@ -132,14 +128,7 @@ export async function loginSalesRep(prevState: any, formData: FormData) {
     return { error: result.error || "Authentication failed" }
   }
 
-  if (
-    result.user &&
-    (result.user.role === "staff" ||
-      result.user.role === "admin" ||
-      result.user.role === "super_admin" ||
-      result.user.role === "sales_person" ||
-      result.user.role === "salesperson")
-  ) {
+  if (result.user && (result.user.role === "STAFF" || result.user.role === "ADMIN")) {
     redirect("/sales-dashboard")
   } else {
     return { error: "Invalid staff credentials" }
