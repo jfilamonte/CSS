@@ -89,7 +89,7 @@ export default function HomePage() {
                     </span>
                   </div>
                   {isAdmin && (
-                    <Link href="/admin-new">
+                    <Link href="/admin">
                       <Button
                         variant="outline"
                         size="sm"
