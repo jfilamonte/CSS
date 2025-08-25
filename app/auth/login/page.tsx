@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { ROLES } from "@/lib/auth-utils"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -47,15 +48,16 @@ export default function LoginPage() {
           return
         }
 
-        const userRole = userProfile?.role || "customer"
+        const userRole = userProfile?.role?.toLowerCase() || ROLES.CUSTOMER
 
-        // Redirect based on role
-        if (userRole === "admin" || userRole === "ADMIN") {
+        if (userRole === ROLES.ADMIN) {
           router.push("/admin")
-        } else if (userRole === "staff" || userRole === "STAFF") {
+        } else if (userRole === ROLES.STAFF || userRole === ROLES.SALES_REP) {
           router.push("/sales-dashboard")
-        } else {
+        } else if (userRole === ROLES.CUSTOMER) {
           router.push("/customer-portal")
+        } else {
+          router.push("/")
         }
       }
     } catch (error: unknown) {

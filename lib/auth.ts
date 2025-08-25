@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { ROLES } from "./auth-utils"
 
 export interface User {
   id: string
@@ -11,7 +12,7 @@ export interface User {
 
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const {
       data: { user: authUser },
       error: authError,
@@ -41,7 +42,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
 export async function signIn(email: string, password: string, ip?: string, userAgent?: string) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -71,7 +72,7 @@ export async function signIn(email: string, password: string, ip?: string, userA
 }
 
 export async function signOut() {
-  const supabase = createClient()
+  const supabase = await createClient()
   await supabase.auth.signOut()
 }
 
@@ -84,7 +85,7 @@ export async function registerUser(userData: {
   role: string
 }) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
@@ -117,7 +118,7 @@ export async function requireAdmin(): Promise<User> {
     redirect("/auth/login")
   }
 
-  if (!["admin", "super_admin"].includes(user.role)) {
+  if (user.role.toLowerCase() !== ROLES.ADMIN) {
     redirect("/unauthorized")
   }
 
@@ -144,7 +145,7 @@ export async function verifyAuth(allowedRoles?: string[]): Promise<User | null> 
 
 export async function refreshSession(): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data, error } = await supabase.auth.refreshSession()
 
     if (error) {

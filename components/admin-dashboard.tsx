@@ -6,17 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { signOut } from "@/lib/actions"
-import {
-  createCustomer,
-  createProject,
-  updateProjectProgress,
-  updateBusinessSettings,
-  sendCustomerEmail,
-  updateQuoteStatus,
-} from "@/lib/database-actions"
-import { createSalesRep, getSalesReps } from "@/lib/database-actions"
-import { toast } from "sonner"
-import { SalesRepAssignmentService } from "@/lib/sales-rep-assignment"
+import { useRouter } from "next/navigation"
+import { ROLES } from "@/lib/auth-utils"
+import { FileText, BarChart3, Settings, ImageIcon, AlertCircle } from "lucide-react"
+import { toast } from "react-hot-toast"
 
 interface Quote {
   id: string
@@ -28,7 +21,6 @@ interface Quote {
   status: string
   created_at: string
   total_cost: number
-  package_id: string
   quote_data?: any
   expires_at?: string
 }
@@ -85,7 +77,9 @@ interface ServicePackage {
   is_active: boolean
 }
 
-export default function AdminDashboard() {
+export default function AdminPortal() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
   const [activeTab, setActiveTab] = useState("dashboard")
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -100,7 +94,6 @@ export default function AdminDashboard() {
   const [selectedSalesRep, setSelectedSalesRep] = useState<any>(null)
   const [salesRepAvailability, setSalesRepAvailability] = useState<any>({})
   const [blockedTimes, setBlockedTimes] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
@@ -146,12 +139,83 @@ export default function AdminDashboard() {
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false)
   const [showBlockedTimeModal, setShowBlockedTimeModal] = useState(false)
 
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
+
   const supabase = createClient()
 
   useEffect(() => {
-    fetchData()
-    fetchTimeOffRequests()
-  }, [])
+    const checkAuth = async () => {
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser()
+
+        if (error || !user) {
+          console.log("[v0] No authenticated user, redirecting to login")
+          router.push("/auth/login")
+          return
+        }
+
+        // Check if user is admin
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .single()
+
+        if (userError || userData?.role?.toLowerCase() !== ROLES.ADMIN) {
+          console.log("[v0] User is not admin, redirecting")
+          router.push("/")
+          return
+        }
+
+        setUser(user)
+        await loadAllData()
+      } catch (error) {
+        console.error("[v0] Auth check error:", error)
+        router.push("/auth/login")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [router])
+
+  const loadAllData = async () => {
+    try {
+      // Load quotes
+      const { data: quotesData, error: quotesError } = await supabase
+        .from("quotes")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (quotesError) throw quotesError
+      setQuotes(quotesData || [])
+
+      // Load projects
+      const { data: projectsData, error: projectsError } = await supabase
+        .from("projects")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (projectsError) throw projectsError
+      setProjects(projectsData || [])
+
+      const { data: usersData, error: usersError } = await supabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (usersError) throw usersError
+      setCustomers(usersData || [])
+
+      console.log("[v0] All data loaded successfully")
+    } catch (error) {
+      console.error("[v0] Error loading data:", error)
+    }
+  }
 
   const fetchData = async () => {
     try {
@@ -197,8 +261,6 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error("Error fetching data:", error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -498,69 +560,33 @@ export default function AdminDashboard() {
     return matchesSearch && matchesStatus
   })
 
-  const handleSignOut = async () => {
-    await signOut()
-  }
-
-  const handleRescheduleApproval = async (
-    requestId: string,
-    appointmentId: string,
-    newDate: string,
-    newTime: string,
-  ) => {
+  const handleCreateQuote = async (formData: FormData) => {
     try {
-      await supabase
-        .from("appointments")
-        .update({
-          scheduled_date: newDate,
-          scheduled_time: newTime,
-          status: "scheduled",
-          admin_notes: "Reschedule approved and updated",
-        })
-        .eq("id", appointmentId)
+      const quoteData = {
+        id: generateUUID(),
+        customer_name: formData.get("customer_name") as string,
+        customer_email: formData.get("customer_email") as string,
+        customer_phone: formData.get("customer_phone") as string,
+        project_address: formData.get("project_address") as string,
+        square_footage: Number.parseInt(formData.get("square_footage") as string),
+        status: "pending", // Use valid status from database constraint
+        total_cost: Number.parseFloat(formData.get("total_cost") as string) || 0,
+        quote_data: {
+          notes: (formData.get("notes") as string) || "",
+          created_by: user?.id,
+        },
+      }
 
-      await supabase.from("reschedule_requests").update({ status: "approved" }).eq("id", requestId)
+      const { error } = await supabase.from("quotes").insert(quoteData)
 
-      await fetchData()
+      if (error) throw error
+
+      console.log("[v0] Quote created successfully")
+      setIsQuoteModalOpen(false)
+      await loadAllData()
     } catch (error) {
-      console.error("Error approving reschedule:", error)
-    }
-  }
-
-  const handleRescheduleRejection = async (requestId: string, appointmentId: string, reason: string) => {
-    try {
-      await supabase
-        .from("appointments")
-        .update({
-          status: "scheduled",
-          admin_notes: `Reschedule request denied: ${reason}`,
-        })
-        .eq("id", appointmentId)
-
-      await supabase.from("reschedule_requests").update({ status: "rejected", admin_notes: reason }).eq("id", requestId)
-
-      await fetchData()
-    } catch (error) {
-      console.error("Error rejecting reschedule:", error)
-    }
-  }
-
-  const initiateAdminReschedule = async (appointmentId: string, newDate: string, newTime: string, reason: string) => {
-    try {
-      await supabase
-        .from("appointments")
-        .update({
-          scheduled_date: newDate,
-          scheduled_time: newTime,
-          admin_notes: `Rescheduled by admin: ${reason}`,
-        })
-        .eq("id", appointmentId)
-
-      await fetchData()
-      setShowRescheduleModal(false)
-      setSelectedAppointment(null)
-    } catch (error) {
-      console.error("Error rescheduling appointment:", error)
+      console.error("[v0] Error creating quote:", error)
+      alert("Failed to create quote: " + (error as Error).message)
     }
   }
 
@@ -582,7 +608,7 @@ export default function AdminDashboard() {
 
       if (error) throw error
 
-      await fetchData()
+      await loadAllData()
       setShowEditQuoteModal(false)
       setEditingQuote(null)
       setCalculatedCost(0)
@@ -633,7 +659,7 @@ export default function AdminDashboard() {
 
       if (error) throw error
 
-      await fetchData()
+      await loadAllData()
       setShowEditCustomerModal(false)
       setEditingCustomer(null)
     } catch (error) {
@@ -666,7 +692,7 @@ export default function AdminDashboard() {
         })
         .eq("id", appointmentId)
 
-      await fetchData()
+      await loadAllData()
     } catch (error) {
       console.error(`Error ${action} appointment:`, error)
     }
@@ -689,7 +715,7 @@ export default function AdminDashboard() {
 
       if (error) throw error
 
-      await fetchData()
+      await loadAllData()
       setShowEditProjectModal(false)
       setEditingProject(null)
     } catch (error) {
@@ -904,23 +930,576 @@ export default function AdminDashboard() {
     }
   }
 
+  const generateUUID = () => {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0,
+        v = c == "x" ? r : (r & 0x3) | 0x8
+      return v.toString(16)
+    })
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    router.push("/auth/login")
+  }
+
+  const handleRescheduleApproval = async (
+    requestId: string,
+    appointmentId: string,
+    newDate: string,
+    newTime: string,
+  ) => {
+    try {
+      await supabase
+        .from("appointments")
+        .update({
+          scheduled_date: newDate,
+          scheduled_time: newTime,
+          status: "scheduled",
+          admin_notes: "Reschedule approved and updated",
+        })
+        .eq("id", appointmentId)
+
+      await supabase.from("reschedule_requests").update({ status: "approved" }).eq("id", requestId)
+
+      await loadAllData()
+    } catch (error) {
+      console.error("Error approving reschedule:", error)
+    }
+  }
+
+  const handleRescheduleRejection = async (requestId: string, appointmentId: string, reason: string) => {
+    try {
+      await supabase
+        .from("appointments")
+        .update({
+          status: "scheduled",
+          admin_notes: `Reschedule request denied: ${reason}`,
+        })
+        .eq("id", appointmentId)
+
+      await supabase.from("reschedule_requests").update({ status: "rejected", admin_notes: reason }).eq("id", requestId)
+
+      await loadAllData()
+    } catch (error) {
+      console.error("Error rejecting reschedule:", error)
+    }
+  }
+
+  const initiateAdminReschedule = async (appointmentId: string, newDate: string, newTime: string, reason: string) => {
+    try {
+      await supabase
+        .from("appointments")
+        .update({
+          scheduled_date: newDate,
+          scheduled_time: newTime,
+          admin_notes: `Rescheduled by admin: ${reason}`,
+        })
+        .eq("id", appointmentId)
+
+      await loadAllData()
+      setShowRescheduleModal(false)
+      setSelectedAppointment(null)
+    } catch (error) {
+      console.error("Error rescheduling appointment:", error)
+    }
+  }
+
+  const handleSaveBusinessSettings = async (formData: FormData) => {
+    const result = await updateBusinessSettings(formData)
+    if (result.success) {
+      alert("Business settings saved successfully!")
+    } else {
+      alert(result.error)
+    }
+  }
+
+  const handleCreateCustomer = async (formData: FormData) => {
+    const result = await createCustomer(formData)
+    if (result.success) {
+      setCustomers([result.data, ...customers])
+      setShowNewCustomerModal(false)
+    } else {
+      alert(result.error)
+    }
+  }
+
+  const handleCreateProject = async (formData: FormData) => {
+    const result = await createProject(formData)
+    if (result.success) {
+      setProjects([result.data, ...projects])
+      setShowNewProjectModal(false)
+    } else {
+      alert(result.error)
+    }
+  }
+
+  const handleUpdateProjectProgress = async (id: string, progress: number) => {
+    try {
+      console.log("[v0] Updating project progress:", { id, progress })
+      const result = await updateProjectProgress(id, progress)
+      console.log("[v0] Update result:", result)
+
+      if (result && result.success) {
+        setProjects(
+          projects.map((project) => (project.id === id ? { ...project, progress_percentage: progress } : project)),
+        )
+      } else {
+        const errorMessage = result?.error || "Unknown error occurred"
+        console.error("[v0] Update failed:", errorMessage)
+        alert(errorMessage)
+      }
+    } catch (error) {
+      console.error("[v0] Exception in handleUpdateProjectProgress:", error)
+      alert("Failed to update project progress")
+    }
+  }
+
+  const handleSendEmail = async () => {
+    if (!selectedCustomer) return
+
+    const result = await sendCustomerEmail(selectedCustomer.id, emailSubject, emailMessage)
+    if (result.success) {
+      alert(result.message)
+      setShowEmailModal(false)
+      setEmailSubject("")
+      setEmailMessage("")
+    } else {
+      alert(result.error)
+    }
+  }
+
+  const handleEditCustomer = async (formData: FormData) => {
+    if (!editingCustomer) return
+
+    try {
+      const updatedData = {
+        first_name: formData.get("first_name") as string,
+        last_name: formData.get("last_name") as string,
+        email: formData.get("email") as string,
+        phone: formData.get("phone") as string,
+        address: formData.get("address") as string,
+        city: formData.get("city") as string,
+        state: formData.get("state") as string,
+        zip_code: formData.get("zip_code") as string,
+      }
+
+      const { error } = await supabase.from("users").update(updatedData).eq("id", editingCustomer.id)
+
+      if (error) throw error
+
+      await loadAllData()
+      setShowEditCustomerModal(false)
+      setEditingCustomer(null)
+    } catch (error) {
+      console.error("Error updating customer:", error)
+    }
+  }
+
+  const handleResetCustomerPassword = async (customerId: string, email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      })
+
+      if (error) throw error
+
+      alert("Password reset email sent successfully!")
+    } catch (error) {
+      console.error("Error sending password reset:", error)
+      alert("Error sending password reset email")
+    }
+  }
+
+  const handleAppointmentAction = async (appointmentId: string, action: string) => {
+    try {
+      await supabase
+        .from("appointments")
+        .update({
+          status: action,
+          admin_notes: `Appointment ${action} by admin`,
+        })
+        .eq("id", appointmentId)
+
+      await loadAllData()
+    } catch (error) {
+      console.error(`Error ${action} appointment:`, error)
+    }
+  }
+
+  const handleEditProject = async (formData: FormData) => {
+    if (!editingProject) return
+
+    try {
+      const updatedData = {
+        title: formData.get("title") as string,
+        description: formData.get("description") as string,
+        project_address: formData.get("project_address") as string,
+        square_footage: Number.parseInt(formData.get("square_footage") as string),
+        start_date: formData.get("start_date") as string,
+        estimated_completion: formData.get("estimated_completion") as string,
+      }
+
+      const { error } = await supabase.from("projects").update(updatedData).eq("id", editingProject.id)
+
+      if (error) throw error
+
+      await loadAllData()
+      setShowEditProjectModal(false)
+      setEditingProject(null)
+    } catch (error) {
+      console.error("Error updating project:", error)
+    }
+  }
+
+  const validateSalesRepForm = (formData: FormData): { isValid: boolean; errors: { [key: string]: string } } => {
+    const errors: { [key: string]: string } = {}
+
+    const firstName = formData.get("firstName")?.toString().trim()
+    const lastName = formData.get("lastName")?.toString().trim()
+    const email = formData.get("email")?.toString().trim()
+    const phone = formData.get("phone")?.toString().trim()
+    const password = formData.get("password")?.toString()
+
+    if (!firstName || firstName.length < 2) {
+      errors.firstName = "First name must be at least 2 characters"
+    }
+
+    if (!lastName || lastName.length < 2) {
+      errors.lastName = "Last name must be at least 2 characters"
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Please enter a valid email address"
+    }
+
+    if (!phone || !/^$$?(\d{3})$$?[-. ]?(\d{3})[-. ]?(\d{4})$/.test(phone)) {
+      errors.phone = "Please enter a valid phone number"
+    }
+
+    if (!password || password.length < 8) {
+      errors.password = "Password must be at least 8 characters"
+    }
+
+    return { isValid: Object.keys(errors).length === 0, errors }
+  }
+
+  const validateAvailabilityData = (availability: any): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = []
+
+    Object.entries(availability).forEach(([day, times]: [string, any]) => {
+      if (times.enabled && times.startTime && times.endTime) {
+        const start = new Date(`2000-01-01T${times.startTime}`)
+        const end = new Date(`2000-01-01T${times.endTime}`)
+
+        if (start >= end) {
+          errors.push(`${day}: Start time must be before end time`)
+        }
+
+        if (start.getHours() < 6 || end.getHours() > 22) {
+          errors.push(`${day}: Hours must be between 6:00 AM and 10:00 PM`)
+        }
+      }
+    })
+
+    return { isValid: errors.length === 0, errors }
+  }
+
+  const handleCreateSalesRep = async (formData: FormData) => {
+    setIsSubmitting(true)
+    setErrors({})
+    setGlobalError("")
+
+    try {
+      const validation = validateSalesRepForm(formData)
+      if (!validation.isValid) {
+        setErrors(validation.errors)
+        return
+      }
+
+      console.log("[v0] Creating sales rep with validated form data")
+
+      const result = await createSalesRep(formData)
+
+      if (!result.success) {
+        if (result.error.includes("already exists")) {
+          setErrors({ email: "A user with this email already exists" })
+        } else if (result.error.includes("constraint")) {
+          setErrors({ form: "Invalid data provided. Please check all fields." })
+        } else {
+          setGlobalError(result.error)
+        }
+        return
+      }
+
+      toast.success("Sales representative created successfully!")
+      setShowNewSalesRepModal(false)
+      setErrors({})
+      await loadSalesReps()
+    } catch (error: any) {
+      console.error("[v0] Error creating sales rep:", error)
+      setGlobalError("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const loadSalesReps = async () => {
+    try {
+      const result = await getSalesReps()
+      setSalesReps(result.data)
+    } catch (error) {
+      console.error("Error loading sales reps:", error)
+      setSalesReps([])
+    }
+  }
+
+  const handleSaveAvailability = async () => {
+    if (!selectedSalesRep) return
+
+    try {
+      const validation = validateAvailabilityData(salesRepAvailability)
+      if (!validation.isValid) {
+        setValidationErrors({ availability: validation.errors })
+        toast.error("Please fix the validation errors before saving")
+        return
+      }
+
+      setValidationErrors({})
+
+      await supabase.from("sales_rep_availability").delete().eq("sales_rep_id", selectedSalesRep.id)
+
+      const availabilityData = []
+      for (const [day, times] of Object.entries(salesRepAvailability)) {
+        if (times.enabled && times.startTime && times.endTime) {
+          availabilityData.push({
+            sales_rep_id: selectedSalesRep.id,
+            day_of_week: day.toLowerCase(),
+            start_time: times.startTime,
+            end_time: times.endTime,
+            is_active: true,
+          })
+        }
+      }
+
+      if (availabilityData.length > 0) {
+        const { error } = await supabase.from("sales_rep_availability").insert(availabilityData)
+        if (error) throw error
+      }
+
+      setShowAvailabilityModal(false)
+      toast.success("Availability updated successfully")
+    } catch (error: any) {
+      console.error("Error saving availability:", error)
+      toast.error(`Failed to save availability: ${error.message || "Unknown error"}`)
+    }
+  }
+
+  const handleAddBlockedTime = async (formData: FormData) => {
+    try {
+      if (!selectedSalesRep) {
+        toast.error("No sales representative selected")
+        return
+      }
+
+      const blockedDate = formData.get("blocked_date") as string
+      const startTime = formData.get("start_time") as string
+      const endTime = formData.get("end_time") as string
+      const reason = formData.get("reason") as string
+      const isAllDay = formData.get("is_all_day") === "on"
+
+      if (!blockedDate) {
+        toast.error("Please select a date")
+        return
+      }
+
+      if (!isAllDay && (!startTime || !endTime)) {
+        toast.error("Please specify start and end times")
+        return
+      }
+
+      if (!isAllDay && startTime >= endTime) {
+        toast.error("Start time must be before end time")
+        return
+      }
+
+      if (!reason || reason.trim().length < 3) {
+        toast.error("Please provide a reason (at least 3 characters)")
+        return
+      }
+
+      const selectedDate = new Date(blockedDate)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      if (selectedDate < today) {
+        toast.error("Cannot block time in the past")
+        return
+      }
+
+      const blockedTimeData = {
+        sales_rep_id: selectedSalesRep.id,
+        blocked_date: blockedDate,
+        start_time: isAllDay ? null : startTime,
+        end_time: isAllDay ? null : endTime,
+        reason: reason.trim(),
+        is_all_day: isAllDay,
+      }
+
+      const { data, error } = await supabase.from("sales_rep_blocked_times").insert([blockedTimeData]).select().single()
+
+      if (error) throw error
+
+      setBlockedTimes([...blockedTimes, data])
+      setShowBlockedTimeModal(false)
+      toast.success("Blocked time added successfully")
+    } catch (error: any) {
+      console.error("Error adding blocked time:", error)
+      toast.error(`Failed to add blocked time: ${error.message || "Unknown error"}`)
+    }
+  }
+
+  const generateUUID = () => {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0,
+        v = c == "x" ? r : (r & 0x3) | 0x8
+      return v.toString(16)
+    })
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    router.push("/auth/login")
+  }
+
+  const handleRescheduleApproval = async (
+    requestId: string,
+    appointmentId: string,
+    newDate: string,
+    newTime: string,
+  ) => {
+    try {
+      await supabase
+        .from("appointments")
+        .update({
+          scheduled_date: newDate,
+          scheduled_time: newTime,
+          status: "scheduled",
+          admin_notes: "Reschedule approved and updated",
+        })
+        .eq("id", appointmentId)
+
+      await supabase.from("reschedule_requests").update({ status: "approved" }).eq("id", requestId)
+
+      await loadAllData()
+    } catch (error) {
+      console.error("Error approving reschedule:", error)
+    }
+  }
+
+  const handleRescheduleRejection = async (requestId: string, appointmentId: string, reason: string) => {
+    try {
+      await supabase
+        .from("appointments")
+        .update({
+          status: "scheduled",
+          admin_notes: `Reschedule request denied: ${reason}`,
+        })
+        .eq("id", appointmentId)
+
+      await supabase.from("reschedule_requests").update({ status: "rejected", admin_notes: reason }).eq("id", requestId)
+
+      await loadAllData()
+    } catch (error) {
+      console.error("Error rejecting reschedule:", error)
+    }
+  }
+
+  const initiateAdminReschedule = async (appointmentId: string, newDate: string, newTime: string, reason: string) => {
+    try {
+      await supabase
+        .from("appointments")
+        .update({
+          scheduled_date: newDate,
+          scheduled_time: newTime,
+          admin_notes: `Rescheduled by admin: ${reason}`,
+        })
+        .eq("id", appointmentId)
+
+      await loadAllData()
+      setShowRescheduleModal(false)
+      setSelectedAppointment(null)
+    } catch (error) {
+      console.error("Error rescheduling appointment:", error)
+    }
+  }
+
+  const loading = false
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+      <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center mr-3">
-                <span className="text-white font-bold text-sm">CSS</span>
-              </div>
-              <h1 className="text-xl font-semibold text-gray-900">Admin Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Admin Portal</h1>
             </div>
-            <Button variant="outline" size="icon" onClick={handleSignOut}>
-              Sign Out
-            </Button>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-500">Welcome, {user?.email}</span>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  await supabase.auth.signOut()
+                  router.push("/auth/login")
+                }}
+              >
+                Sign Out
+              </Button>
+            </div>
+          </div>
+
+          <div className="border-t">
+            <nav className="flex space-x-8 py-4">
+              <Button variant="ghost" className="flex items-center space-x-2">
+                <BarChart3 className="h-4 w-4" />
+                <span>Dashboard</span>
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-2"
+                onClick={() => router.push("/admin-new/cms")}
+              >
+                <FileText className="h-4 w-4" />
+                <span>CMS</span>
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-2"
+                onClick={() => router.push("/admin-new/seo")}
+              >
+                <Settings className="h-4 w-4" />
+                <span>SEO Settings</span>
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-2"
+                onClick={() => router.push("/admin-new/gallery")}
+              >
+                <ImageIcon className="h-4 w-4" />
+                <span>Gallery</span>
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-2"
+                onClick={() => router.push("/admin-new/error-logs")}
+              >
+                <AlertCircle className="h-4 w-4" />
+                <span>Error Logs</span>
+              </Button>
+            </nav>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <Tabs defaultValue="dashboard" className="w-full">

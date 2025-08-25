@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { AdminDashboardNew } from "@/components/admin-dashboard-new"
-import { supabase } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { ROLES } from "@/lib/auth-utils"
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -15,6 +16,7 @@ export default function AdminPage() {
       try {
         console.log("[v0] Checking authentication...")
 
+        const supabase = createClient()
         const {
           data: { user },
           error,
@@ -32,7 +34,7 @@ export default function AdminPage() {
           .eq("id", user.id)
           .single()
 
-        if (userError || (userData?.role !== "admin" && userData?.role !== "ADMIN")) {
+        if (userError || userData?.role?.toLowerCase() !== ROLES.ADMIN) {
           console.log("[v0] User is not admin, redirecting")
           router.push("/auth/login")
           return

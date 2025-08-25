@@ -3,7 +3,8 @@
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import type { User } from "@supabase/supabase-js"
-import { supabase } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
+import { ROLES } from "@/lib/auth-utils"
 
 interface AuthContextType {
   user: User | null
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
+        const supabase = createClient()
         const {
           data: { session },
         } = await supabase.auth.getSession()
@@ -32,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           const { data: profile } = await supabase.from("users").select("role").eq("id", session.user.id).single()
 
-          setIsAdmin(profile?.role === "admin" || profile?.role === "ADMIN")
+          setIsAdmin(profile?.role?.toLowerCase() === ROLES.ADMIN)
         }
       } catch (error) {
         console.error("Error getting initial session:", error)
@@ -44,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession()
 
     // Listen for auth changes
+    const supabase = createClient()
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -53,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         const { data: profile } = await supabase.from("users").select("role").eq("id", session.user.id).single()
 
-        setIsAdmin(profile?.role === "admin" || profile?.role === "ADMIN")
+        setIsAdmin(profile?.role?.toLowerCase() === ROLES.ADMIN)
       } else {
         setIsAdmin(false)
       }
@@ -67,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       console.log("[v0] Attempting sign in for:", email)
+      const supabase = createClient()
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -88,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log("[v0] Signing out user")
+      const supabase = createClient()
       await supabase.auth.signOut()
     } catch (error) {
       console.error("Error signing out:", error)
