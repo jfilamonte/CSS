@@ -168,6 +168,17 @@ export const db = {
       }
       return result
     },
+
+    async update(id: string, data: any) {
+      const supabase = await createClient()
+      const { data: result, error } = await supabase.from("quotes").update(data).eq("id", id).select().single()
+
+      if (error) {
+        console.warn("Database operation failed:", error)
+        return null
+      }
+      return result
+    },
   },
 
   project: {
