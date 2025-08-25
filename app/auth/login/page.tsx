@@ -49,10 +49,9 @@ export default function LoginPage() {
 
         const userRole = userProfile?.role || "customer"
 
-        // Redirect based on role
-        if (userRole === "admin" || userRole === "ADMIN") {
-          router.push("/admin")
-        } else if (userRole === "staff" || userRole === "STAFF") {
+        if (userRole.toLowerCase() === "admin") {
+          router.push("/admin-new")
+        } else if (userRole.toLowerCase() === "staff") {
           router.push("/sales-dashboard")
         } else {
           router.push("/customer-portal")
