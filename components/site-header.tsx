@@ -62,12 +62,12 @@ export function SiteHeader() {
             <Button asChild className="hidden sm:inline-flex hover:bg-green-700 bg-green-800">
               <Link href="#quote-form">Get Quote</Link>
             </Button>
-            {/* <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm">
               <Link href="/auth/customer-login">Customer Portal</Link>
             </Button>
             <Button asChild variant="outline" size="sm">
-              <Link href="/admin-new">Admin</Link>
-            </Button> */}
+              <Link href="/auth/login">Admin Login</Link>
+            </Button>
 
             {/* Mobile menu button */}
             <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
@@ -94,6 +94,12 @@ export function SiteHeader() {
               </Link>
               <Link href="/contact" className="text-gray-700 hover:text-green-600 font-medium">
                 Contact
+              </Link>
+              <Link href="/auth/customer-login" className="text-gray-700 hover:text-green-600 font-medium">
+                Customer Portal
+              </Link>
+              <Link href="/auth/login" className="text-gray-700 hover:text-green-600 font-medium">
+                Admin Login
               </Link>
             </nav>
           </div>
