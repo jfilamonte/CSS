@@ -42,7 +42,6 @@ import type {
   ProjectWithRelations,
   UserWithRelations,
   LeadStatus,
-  QuoteStatus,
 } from "@/lib/types"
 
 interface DashboardStats {
@@ -211,7 +210,7 @@ function AdminDashboardNew() {
 
   const addQuoteLineItem = () => {
     const newItem: QuoteLineItem = {
-      id: Date.now().toString(),
+      id: `item-${Date.now()}`,
       description: "",
       quantity: 1,
       unitPrice: 0,
@@ -220,7 +219,7 @@ function AdminDashboardNew() {
     setCurrentQuote([...currentQuote, newItem])
   }
 
-  const updateQuoteLineItem = (id: string, field: keyof QuoteLineItem, value: any) => {
+  const updateQuoteLineItem = (id: string, field: keyof QuoteLineItem, value: string | number) => {
     setCurrentQuote(
       currentQuote.map((item) => {
         if (item.id === id) {
@@ -239,79 +238,22 @@ function AdminDashboardNew() {
     setCurrentQuote(currentQuote.filter((item) => item.id !== id))
   }
 
-  const getQuoteTotal = () => {
-    return currentQuote.reduce((sum, item) => sum + item.total, 0)
-  }
-
-  const updateQuoteStatus = async (quoteId: string, status: QuoteStatus) => {
-    try {
-      const response = await fetch(`/api/admin/quotes/${quoteId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      })
-
-      if (response.ok) {
-        setQuotes(quotes.map((quote) => (quote.id === quoteId ? { ...quote, status } : quote)))
-      }
-    } catch (error) {
-      console.error("Error updating quote:", error)
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "NEW":
-        return "bg-blue-100 text-blue-800"
-      case "CONTACTED":
-        return "bg-yellow-100 text-yellow-800"
-      case "ESTIMATE_SENT":
-        return "bg-purple-100 text-purple-800"
-      case "SCHEDULED":
-        return "bg-orange-100 text-orange-800"
-      case "CLOSED_WON":
-        return "bg-green-100 text-green-800"
-      case "CLOSED_LOST":
-        return "bg-red-100 text-red-800"
-      case "DRAFT":
-        return "bg-gray-100 text-gray-800"
-      case "SENT":
-        return "bg-blue-100 text-blue-800"
-      case "VIEWED":
-        return "bg-yellow-100 text-yellow-800"
-      case "ACCEPTED":
-        return "bg-green-100 text-green-800"
-      case "REJECTED":
-        return "bg-red-100 text-red-800"
-      case "PLANNING":
-        return "bg-blue-100 text-blue-800"
-      case "IN_PROGRESS":
-        return "bg-yellow-100 text-yellow-800"
-      case "COMPLETED":
-        return "bg-green-100 text-green-800"
-      case "ON_HOLD":
-        return "bg-orange-100 text-orange-800"
-      case "CANCELLED":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
   const handleViewLead = async (leadId: string) => {
     try {
-      router.push(`/admin/leads/${leadId}`)
+      const response = await fetch(`/api/admin/leads/${leadId}`)
+      if (response.ok) {
+        const lead = await response.json()
+        // Open lead details modal or navigate to lead page
+        router.push(`/admin/leads/${leadId}`)
+      }
     } catch (error) {
-      console.error("[v0] ERROR:", error.message, { action: "viewLead", leadId })
+      console.error("Error viewing lead:", error)
     }
   }
 
-  const handleEditLead = async (leadId: string) => {
-    try {
-      router.push(`/admin/leads/${leadId}/edit`)
-    } catch (error) {
-      console.error("[v0] ERROR:", error.message, { action: "editLead", leadId })
-    }
+  const handleEditLead = (leadId: string) => {
+    // Implementation for editing lead
+    router.push(`/admin/leads/${leadId}/edit`)
   }
 
   const handleViewQuote = (quoteId: string) => {
@@ -325,33 +267,20 @@ function AdminDashboardNew() {
   const handleDownloadQuote = async (quoteId: string) => {
     try {
       const response = await fetch(`/api/admin/quotes/${quoteId}/download`)
-      if (!response.ok) throw new Error("Failed to download quote")
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `quote-${quoteId}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `quote-${quoteId}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      }
     } catch (error) {
-      console.error("[v0] ERROR:", error.message, { action: "downloadQuote", quoteId })
-      alert("Failed to download quote. Please try again.")
+      console.error("Error downloading quote:", error)
     }
-  }
-
-  const handleViewProject = (projectId: string) => {
-    router.push(`/admin/projects/${projectId}`)
-  }
-
-  const handleEditProject = (projectId: string) => {
-    router.push(`/admin/projects/${projectId}/edit`)
-  }
-
-  const handleProjectMessage = (projectId: string) => {
-    router.push(`/admin/projects/${projectId}/messages`)
   }
 
   const handleViewCustomer = (customerId: string) => {
@@ -363,7 +292,73 @@ function AdminDashboardNew() {
   }
 
   const handleCustomerMessage = (customerId: string) => {
-    router.push(`/admin/customers/${customerId}/messages`)
+    router.push(`/admin/messages?customer=${customerId}`)
+  }
+
+  const handleImportCustomers = () => {
+    // Implementation for importing customers
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = ".csv,.xlsx"
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        const formData = new FormData()
+        formData.append("file", file)
+        try {
+          const response = await fetch("/api/admin/customers/import", {
+            method: "POST",
+            body: formData,
+          })
+          if (response.ok) {
+            await loadDashboardData()
+            alert("Customers imported successfully")
+          }
+        } catch (error) {
+          console.error("Error importing customers:", error)
+        }
+      }
+    }
+    input.click()
+  }
+
+  const handleUpdateContent = async () => {
+    try {
+      const response = await fetch("/api/admin/cms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          heroTitle: "Professional Epoxy Flooring Solutions",
+          heroSubtitle: "Transform your space with durable, beautiful epoxy floors",
+          services: ["Garage Floor Coatings", "Commercial Flooring", "Decorative Concrete"],
+        }),
+      })
+      if (response.ok) {
+        alert("Content updated successfully")
+      }
+    } catch (error) {
+      console.error("Error updating content:", error)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: "bg-yellow-100 text-yellow-800",
+      approved: "bg-green-100 text-green-800",
+      rejected: "bg-red-100 text-red-800",
+      completed: "bg-blue-100 text-blue-800",
+      in_progress: "bg-orange-100 text-orange-800",
+      planning: "bg-purple-100 text-purple-800",
+    }
+    return colors[status] || "bg-gray-100 text-gray-800"
+  }
+
+  const handleEditProject = (projectId: string) => {
+    router.push(`/admin/projects/${projectId}/edit`)
+  }
+
+  const handleProjectMessage = (projectId: string) => {
+    router.push(`/admin/projects/${projectId}/messages`)
   }
 
   const handleStaffSchedule = (staffId: string) => {
@@ -374,54 +369,12 @@ function AdminDashboardNew() {
     router.push(`/admin/staff/${staffId}/edit`)
   }
 
-  const handleImportCustomers = async () => {
-    try {
-      const input = document.createElement("input")
-      input.type = "file"
-      input.accept = ".csv"
-      input.onchange = async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0]
-        if (!file) return
-
-        const formData = new FormData()
-        formData.append("file", file)
-
-        const response = await fetch("/api/admin/customers/import", {
-          method: "POST",
-          body: formData,
-        })
-
-        if (!response.ok) throw new Error("Import failed")
-
-        alert("Customers imported successfully!")
-        fetchData() // Refresh data
-      }
-      input.click()
-    } catch (error) {
-      console.error("[v0] ERROR:", error.message, { action: "importCustomers" })
-      alert("Failed to import customers. Please try again.")
-    }
-  }
-
-  const handleUpdateContent = async () => {
-    try {
-      const response = await fetch("/api/admin/content/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(siteSettings),
-      })
-
-      if (!response.ok) throw new Error("Failed to update content")
-
-      alert("Content updated successfully!")
-    } catch (error) {
-      console.error("[v0] ERROR:", error.message, { action: "updateContent" })
-      alert("Failed to update content. Please try again.")
-    }
-  }
-
   const fetchData = async () => {
     await loadDashboardData()
+  }
+
+  const handleViewProject = (projectId: string) => {
+    router.push(`/admin/projects/${projectId}`)
   }
 
   if (loading) {
@@ -514,7 +467,7 @@ function AdminDashboardNew() {
                         />
                       </div>
                       <div className="col-span-2">
-                        <Input value={`$${item.total.toFixed(2)}`} readOnly className="bg-gray-50" />
+                        <Input type="number" placeholder="Total" value={item.total} readOnly className="bg-gray-50" />
                       </div>
                       <div className="col-span-1">
                         <Button size="sm" variant="outline" onClick={() => removeQuoteLineItem(item.id)}>
@@ -525,15 +478,16 @@ function AdminDashboardNew() {
                   ))}
                 </div>
 
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-green-600">Total: ${getQuoteTotal().toFixed(2)}</div>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowQuoteBuilder(false)}>
-                    Cancel
-                  </Button>
-                  <Button className="bg-green-700 hover:bg-green-800">Save Quote</Button>
+                <div className="flex justify-between items-center pt-4 border-t">
+                  <div className="text-lg font-semibold">
+                    Total: ${currentQuote.reduce((sum, item) => sum + item.total, 0).toFixed(2)}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setShowQuoteBuilder(false)}>
+                      Cancel
+                    </Button>
+                    <Button className="bg-green-700 hover:bg-green-800">Generate Quote</Button>
+                  </div>
                 </div>
               </div>
             </DialogContent>
