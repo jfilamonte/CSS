@@ -41,6 +41,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
 export async function signIn(email: string, password: string, ip?: string, userAgent?: string) {
   try {
+    console.log("[v0] Auth signIn starting for email:", email)
     const supabase = createClient()
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -48,24 +49,40 @@ export async function signIn(email: string, password: string, ip?: string, userA
       password,
     })
 
+    console.log("[v0] Supabase auth response:", {
+      success: !error,
+      error: error?.message,
+      userId: data?.user?.id,
+    })
+
     if (error) {
+      console.log("[v0] Supabase auth error:", error.message)
       return { success: false, error: error.message }
     }
 
     // Get user role from users table
+    console.log("[v0] Fetching user data from users table")
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("id, email, role, first_name, last_name")
       .eq("email", email)
       .single()
 
+    console.log("[v0] User data query result:", {
+      success: !userError,
+      error: userError?.message,
+      userData: userData ? { ...userData, role: userData.role } : null,
+    })
+
     if (userError || !userData) {
+      console.log("[v0] User data not found:", userError?.message)
       return { success: false, error: "User data not found" }
     }
 
+    console.log("[v0] Authentication successful for:", userData.email, "with role:", userData.role)
     return { success: true, user: userData }
   } catch (error) {
-    console.error("Sign in error:", error)
+    console.error("[v0] Sign in error:", error)
     return { success: false, error: "Authentication failed" }
   }
 }

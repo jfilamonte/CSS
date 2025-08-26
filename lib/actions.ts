@@ -11,15 +11,23 @@ async function getClientInfo() {
 }
 
 export async function signIn(prevState: any, formData: FormData) {
+  console.log("[v0] Starting signIn process")
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
+  console.log("[v0] Email:", email)
+  console.log("[v0] Password length:", password?.length)
+
   if (!email || !password) {
+    console.log("[v0] Missing email or password")
     return { error: "Email and password are required" }
   }
 
   const { ip, userAgent } = await getClientInfo()
+  console.log("[v0] Client info - IP:", ip, "UserAgent:", userAgent?.substring(0, 50))
+
   const result = await authSignIn(email, password, ip, userAgent)
+  console.log("[v0] Auth result:", JSON.stringify(result, null, 2))
 
   if (!result.success) {
     console.error("[v0] Sign in error:", result.error)
@@ -29,36 +37,52 @@ export async function signIn(prevState: any, formData: FormData) {
   if (result.user) {
     console.log("[v0] Sign in successful for:", result.user.email, "Role:", result.user.role)
 
-    if (result.user.role === "ADMIN") {
+    const userRole = result.user.role?.toLowerCase()
+    console.log("[v0] Normalized role:", userRole)
+
+    if (userRole === "admin" || userRole === "super_admin") {
+      console.log("[v0] Redirecting admin to /admin-new")
       redirect("/admin-new")
-    } else if (result.user.role === "STAFF") {
+    } else if (userRole === "staff" || userRole === "sales_person" || userRole === "salesperson") {
+      console.log("[v0] Redirecting staff to /sales-dashboard")
       redirect("/sales-dashboard")
-    } else {
+    } else if (userRole === "customer") {
+      console.log("[v0] Redirecting customer to /customer-portal")
       redirect("/customer-portal")
+    } else {
+      console.log("[v0] Unknown role:", userRole, "redirecting to home")
+      redirect("/")
     }
   }
 
+  console.log("[v0] No user found in result, authentication failed")
   return { error: "Authentication failed" }
 }
 
 export async function signInCustomer(prevState: any, formData: FormData) {
+  console.log("[v0] Starting signInCustomer process")
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
   if (!email || !password) {
+    console.log("[v0] Customer login: Missing email or password")
     return { error: "Email and password are required" }
   }
 
   const { ip, userAgent } = await getClientInfo()
   const result = await authSignIn(email, password, ip, userAgent)
+  console.log("[v0] Customer auth result:", JSON.stringify(result, null, 2))
 
   if (!result.success) {
+    console.log("[v0] Customer login failed:", result.error)
     return { error: result.error || "Authentication failed" }
   }
 
-  if (result.user && result.user.role === "CUSTOMER") {
+  if (result.user && result.user.role?.toLowerCase() === "customer") {
+    console.log("[v0] Customer login successful, redirecting")
     redirect("/customer-portal")
   } else {
+    console.log("[v0] Invalid customer role:", result.user?.role)
     return { error: "Invalid customer credentials" }
   }
 }
@@ -114,23 +138,37 @@ export async function registerCustomer(prevState: any, formData: FormData) {
 }
 
 export async function loginSalesRep(prevState: any, formData: FormData) {
+  console.log("[v0] Starting loginSalesRep process")
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
   if (!email || !password) {
+    console.log("[v0] Sales login: Missing email or password")
     return { error: "Email and password are required" }
   }
 
   const { ip, userAgent } = await getClientInfo()
   const result = await authSignIn(email, password, ip, userAgent)
+  console.log("[v0] Sales auth result:", JSON.stringify(result, null, 2))
 
   if (!result.success) {
+    console.log("[v0] Sales login failed:", result.error)
     return { error: result.error || "Authentication failed" }
   }
 
-  if (result.user && (result.user.role === "STAFF" || result.user.role === "ADMIN")) {
+  const userRole = result.user?.role?.toLowerCase()
+  if (
+    result.user &&
+    (userRole === "staff" ||
+      userRole === "admin" ||
+      userRole === "super_admin" ||
+      userRole === "sales_person" ||
+      userRole === "salesperson")
+  ) {
+    console.log("[v0] Sales login successful for role:", userRole)
     redirect("/sales-dashboard")
   } else {
+    console.log("[v0] Invalid staff role:", result.user?.role)
     return { error: "Invalid staff credentials" }
   }
 }
