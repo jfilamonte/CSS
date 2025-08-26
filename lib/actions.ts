@@ -91,16 +91,19 @@ export async function registerCustomer(prevState: any, formData: FormData) {
     return { error: "Password must be at least 8 characters long" }
   }
 
+  console.log("[v0] Registering customer:", email)
+
   const result = await registerUser({
     email,
     password,
     firstName,
     lastName,
     phone,
-    role: "CUSTOMER",
+    role: "customer", // Use lowercase role
   })
 
   if (!result.success) {
+    console.error("[v0] Customer registration failed:", result.error)
     return { error: result.error || "Registration failed" }
   }
 
@@ -109,6 +112,7 @@ export async function registerCustomer(prevState: any, formData: FormData) {
   const signInResult = await authSignIn(email, password, ip, userAgent)
 
   if (signInResult.success) {
+    console.log("[v0] Auto sign-in successful, redirecting to customer portal")
     redirect("/customer-portal")
   }
 
