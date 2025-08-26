@@ -78,7 +78,7 @@ interface PerformanceMetric {
   earnings_this_month: number
 }
 
-export default function SubcontractorManagementDashboard() {
+function SubcontractorManagementDashboard() {
   const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([])
   const [subcontractorProjects, setSubcontractorProjects] = useState<SubcontractorProject[]>([])
   const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetric[]>([])
@@ -778,3 +778,6 @@ export default function SubcontractorManagementDashboard() {
     </div>
   )
 }
+
+export { SubcontractorManagementDashboard }
+export default SubcontractorManagementDashboard

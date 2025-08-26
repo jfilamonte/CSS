@@ -35,6 +35,7 @@ import {
   Mail,
   Star,
   FolderOpen,
+  ImageIcon,
 } from "lucide-react"
 import type {
   LeadWithRelations,
@@ -43,9 +44,9 @@ import type {
   UserWithRelations,
   LeadStatus,
 } from "@/lib/types"
-
-import { AuditTrailViewer } from "@/components/audit-trail-viewer"
 import { UnifiedProjectCustomerForm } from "@/components/unified-project-customer-form"
+import { EquipmentManagementDashboard } from "@/components/equipment-management-dashboard"
+import Link from "next/link"
 
 interface DashboardStats {
   totalLeads: number
@@ -1148,21 +1149,7 @@ function AdminDashboardNew() {
         </TabsContent>
 
         <TabsContent value="equipment" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Equipment Management</CardTitle>
-              <p className="text-sm text-gray-600">Track and manage your equipment, tools, and maintenance schedules</p>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">Equipment management system ready for deployment</p>
-                <Button className="bg-green-700 hover:bg-green-800">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Equipment
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <EquipmentManagementDashboard />
         </TabsContent>
 
         <TabsContent value="workflows" className="space-y-4">
@@ -1198,65 +1185,121 @@ function AdminDashboardNew() {
                   <p className="text-sm text-gray-500">Last 30 days</p>
                 </Card>
               </div>
-              <div className="flex justify-between items-center">
-                <h3 className="font-semibold">Configured Workflows</h3>
-                <Button className="bg-green-700 hover:bg-green-800">
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Workflow
-                </Button>
-              </div>
-              <div className="space-y-2 mt-4">
-                <div className="border rounded-lg p-3 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">New Project Created</div>
-                    <div className="text-sm text-gray-500">Sends notification and creates follow-up task</div>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold">Workflow Templates</h3>
+                  <Button className="bg-green-700 hover:bg-green-800">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Workflow
+                  </Button>
                 </div>
-                <div className="border rounded-lg p-3 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">Customer Registration</div>
-                    <div className="text-sm text-gray-500">Sends welcome email and schedules follow-up</div>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
-                </div>
-                <div className="border rounded-lg p-3 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">Project Status Change</div>
-                    <div className="text-sm text-gray-500">Updates customer and creates completion tasks</div>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-2">Customer Onboarding</h4>
+                    <p className="text-sm text-gray-600 mb-3">Automated welcome sequence for new customers</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline">
+                        Configure
+                      </Button>
+                      <Button size="sm" className="bg-green-700 hover:bg-green-800">
+                        Activate
+                      </Button>
+                    </div>
+                  </Card>
+
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-2">Project Completion</h4>
+                    <p className="text-sm text-gray-600 mb-3">Follow-up tasks when projects are marked complete</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline">
+                        Configure
+                      </Button>
+                      <Button size="sm" className="bg-green-700 hover:bg-green-800">
+                        Activate
+                      </Button>
+                    </div>
+                  </Card>
+
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-2">Payment Reminders</h4>
+                    <p className="text-sm text-gray-600 mb-3">Automated reminders for overdue invoices</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline">
+                        Configure
+                      </Button>
+                      <Button size="sm" className="bg-green-700 hover:bg-green-800">
+                        Activate
+                      </Button>
+                    </div>
+                  </Card>
+
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-2">Equipment Maintenance</h4>
+                    <p className="text-sm text-gray-600 mb-3">Schedule and track equipment maintenance</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline">
+                        Configure
+                      </Button>
+                      <Button size="sm" className="bg-green-700 hover:bg-green-800">
+                        Activate
+                      </Button>
+                    </div>
+                  </Card>
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="audit" className="space-y-4">
-          <AuditTrailViewer />
-        </TabsContent>
-
         <TabsContent value="gallery" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Advanced Gallery Management</CardTitle>
+              <CardTitle>Gallery Management</CardTitle>
               <p className="text-sm text-gray-600">
                 Manage project photos, before/after galleries, and portfolio images
               </p>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">Advanced gallery management system is ready</p>
-                <div className="flex gap-2 justify-center">
-                  <Button className="bg-green-700 hover:bg-green-800">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Images
-                  </Button>
-                  <Button variant="outline">
-                    <FolderOpen className="w-4 h-4 mr-2" />
-                    Manage Categories
-                  </Button>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ImageIcon className="w-5 h-5 text-blue-500" />
+                    <span className="font-medium">Total Images</span>
+                  </div>
+                  <div className="text-2xl font-bold">247</div>
+                  <p className="text-sm text-gray-500">Across all projects</p>
+                </Card>
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FolderOpen className="w-5 h-5 text-green-500" />
+                    <span className="font-medium">Categories</span>
+                  </div>
+                  <div className="text-2xl font-bold">8</div>
+                  <p className="text-sm text-gray-500">Organized collections</p>
+                </Card>
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Upload className="w-5 h-5 text-orange-500" />
+                    <span className="font-medium">Recent Uploads</span>
+                  </div>
+                  <div className="text-2xl font-bold">12</div>
+                  <p className="text-sm text-gray-500">This week</p>
+                </Card>
+              </div>
+
+              <div className="flex gap-2 justify-center">
+                <Button className="bg-green-700 hover:bg-green-800" asChild>
+                  <Link href="/admin-new/gallery">
+                    <ImageIcon className="w-4 h-4 mr-2" />
+                    Open Gallery Manager
+                  </Link>
+                </Button>
+                <Button variant="outline">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Quick Upload
+                </Button>
               </div>
             </CardContent>
           </Card>

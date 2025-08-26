@@ -76,7 +76,7 @@ interface WarrantyAlert {
   priority: "high" | "medium" | "low"
 }
 
-export default function WarrantyTrackingDashboard() {
+function WarrantyTrackingDashboard() {
   const [warranties, setWarranties] = useState<Warranty[]>([])
   const [warrantyClaims, setWarrantyClaims] = useState<WarrantyClaim[]>([])
   const [warrantyAlerts, setWarrantyAlerts] = useState<WarrantyAlert[]>([])
@@ -748,3 +748,6 @@ export default function WarrantyTrackingDashboard() {
     </div>
   )
 }
+
+export { WarrantyTrackingDashboard }
+export default WarrantyTrackingDashboard

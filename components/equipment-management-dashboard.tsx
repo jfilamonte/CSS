@@ -62,7 +62,7 @@ interface MaintenanceAlert {
   priority: "high" | "medium" | "low"
 }
 
-export default function EquipmentManagementDashboard() {
+function EquipmentManagementDashboard() {
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([])
   const [maintenanceAlerts, setMaintenanceAlerts] = useState<MaintenanceAlert[]>([])
@@ -689,3 +689,6 @@ export default function EquipmentManagementDashboard() {
     </div>
   )
 }
+
+export { EquipmentManagementDashboard }
+export default EquipmentManagementDashboard
