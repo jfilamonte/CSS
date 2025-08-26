@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/"
 
   if (code) {
-    const supabase = createServerClient()
+    const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
@@ -20,11 +20,10 @@ export async function GET(request: NextRequest) {
         // Get user profile to check role
         const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single()
 
-        // Redirect based on role
-        if (profile?.role === "ADMIN" || profile?.role === "admin") {
-          return NextResponse.redirect(`${origin}/admin`)
+        if (profile?.role?.toLowerCase() === "admin" || profile?.role?.toLowerCase() === "super_admin") {
+          return NextResponse.redirect(`${origin}/admin-new`)
         } else {
-          return NextResponse.redirect(`${origin}/customer`)
+          return NextResponse.redirect(`${origin}/customer-portal`)
         }
       }
     }

@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation"
-import { createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import SalesRepDashboard from "@/components/sales-rep-dashboard"
 
 export const dynamic = "force-dynamic"
 
 export default async function SalesDashboardPage() {
-  const supabase = createServerClient()
+  const supabase = await createClient()
 
   const {
     data: { user },
@@ -23,7 +23,8 @@ export default async function SalesDashboardPage() {
     .eq("id", user.id)
     .single()
 
-  if (!userData || userData.role !== "sales_person") {
+  const userRole = userData?.role?.toLowerCase()
+  if (!userData || (userRole !== "sales_person" && userRole !== "salesperson" && userRole !== "staff")) {
     redirect("/sales-portal")
   }
 
