@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/database"
+import { db } from "@/lib/database"
 import Stripe from "stripe"
 
 let stripe: Stripe | null = null
@@ -26,18 +26,16 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await getCurrentUser()
-    if (!user || user.role !== "CUSTOMER") {
+    if (!user || !["customer", "admin", "staff"].includes(user.role?.toLowerCase())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { invoiceId } = await request.json()
 
-    const invoice = await prisma.invoice.findFirst({
-      where: {
-        id: invoiceId,
-        customerId: user.id,
-        status: "PENDING",
-      },
+    const invoice = await db.invoices.findFirst({
+      id: invoiceId,
+      customer_id: user.id,
+      status: "pending",
     })
 
     if (!invoice) {
@@ -46,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     const stripeClient = getStripeClient()
     const paymentIntent = await stripeClient.paymentIntents.create({
-      amount: Math.round(invoice.amount * 100), // Convert to cents
+      amount: Math.round(invoice.total_amount * 100), // Convert to cents
       currency: "usd",
       metadata: {
         invoiceId: invoice.id,

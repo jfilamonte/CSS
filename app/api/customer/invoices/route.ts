@@ -1,26 +1,25 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/database"
+import { db } from "@/lib/database"
 
 export async function GET() {
   try {
     const user = await getCurrentUser()
-    if (!user || user.role !== "CUSTOMER") {
+    if (!user || !["customer", "admin", "staff"].includes(user.role?.toLowerCase())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const invoices = await prisma.invoice.findMany({
-      where: { customerId: user.id },
-      orderBy: { createdAt: "desc" },
+    const invoices = await db.invoices.findMany({
+      customer_id: user.role?.toLowerCase() === "customer" ? user.id : undefined,
     })
 
-    const formattedInvoices = invoices.map((invoice) => ({
+    const formattedInvoices = invoices.map((invoice: any) => ({
       id: invoice.id,
-      number: invoice.invoiceNumber,
-      amount: invoice.amount,
-      status: invoice.status.toLowerCase(),
-      dueDate: invoice.dueDate.toISOString(),
-      paidDate: invoice.paidDate?.toISOString(),
+      number: invoice.invoice_number,
+      amount: invoice.total_amount,
+      status: invoice.status?.toLowerCase(),
+      dueDate: invoice.due_date,
+      paidDate: invoice.paid_at,
       downloadUrl: `/api/invoices/${invoice.id}/download`,
     }))
 
