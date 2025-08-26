@@ -22,19 +22,25 @@ export default function LoginPage() {
     setError(null)
 
     try {
+      console.log("[v0] Starting login process for:", email)
       const supabase = createClient()
 
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/admin-new`,
+        },
       })
 
       if (authError) {
+        console.log("[v0] Authentication error:", authError.message)
         setError(authError.message)
         return
       }
 
       if (data.user) {
+        console.log("[v0] User authenticated, fetching profile...")
         const { data: userProfile, error: profileError } = await supabase
           .from("users")
           .select("role")
@@ -42,23 +48,27 @@ export default function LoginPage() {
           .single()
 
         if (profileError) {
-          console.error("Error fetching user profile:", profileError)
+          console.error("[v0] Error fetching user profile:", profileError)
           setError("Failed to load user profile")
           return
         }
 
-        const userRole = userProfile?.role || "customer"
+        const userRole = userProfile?.role?.toLowerCase() || "customer"
+        console.log("[v0] User role:", userRole)
 
-        // Redirect based on role
-        if (userRole === "admin" || userRole === "ADMIN") {
-          router.push("/admin")
-        } else if (userRole === "staff" || userRole === "STAFF") {
+        if (userRole === "admin" || userRole === "super_admin") {
+          console.log("[v0] Redirecting to admin portal")
+          router.push("/admin-new")
+        } else if (userRole === "staff" || userRole === "sales_person" || userRole === "salesperson") {
+          console.log("[v0] Redirecting to sales dashboard")
           router.push("/sales-dashboard")
         } else {
+          console.log("[v0] Redirecting to customer portal")
           router.push("/customer-portal")
         }
       }
     } catch (error: unknown) {
+      console.error("[v0] Login exception:", error)
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
       setIsLoading(false)
