@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Save } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function CMSPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
   const [content, setContent] = useState({
     hero_title: "",
     hero_subtitle: "",
@@ -67,12 +70,31 @@ export default function CMSPage() {
   }
 
   const handleSave = async () => {
+    if (saving) return // Prevent multiple submissions
+
+    setSaving(true)
     try {
       console.log("Saving CMS content:", content)
-      alert("Content saved successfully!")
+
+      // Use setTimeout to make this non-blocking
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      // Show success toast instead of blocking alert
+      toast({
+        title: "Success",
+        description: "Content saved successfully!",
+        variant: "default",
+      })
     } catch (error) {
       console.error("Error saving content:", error)
-      alert("Failed to save content")
+      // Show error toast instead of blocking alert
+      toast({
+        title: "Error",
+        description: "Failed to save content. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -160,9 +182,9 @@ export default function CMSPage() {
           </Card>
 
           <div className="flex justify-end">
-            <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700" disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
-              Save Changes
+              {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </div>

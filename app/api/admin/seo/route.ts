@@ -84,3 +84,8 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+export async function POST(request: NextRequest) {
+  // POST requests should behave the same as PUT for SEO updates
+  return PUT(request)
+}
