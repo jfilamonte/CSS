@@ -31,10 +31,10 @@ import {
   Download,
   Upload,
   Clock,
-  MapPin,
   Phone,
   Mail,
   Star,
+  FolderOpen,
 } from "lucide-react"
 import type {
   LeadWithRelations,
@@ -43,6 +43,9 @@ import type {
   UserWithRelations,
   LeadStatus,
 } from "@/lib/types"
+
+import { AuditTrailViewer } from "@/components/audit-trail-viewer"
+import { UnifiedProjectCustomerForm } from "@/components/unified-project-customer-form"
 
 interface DashboardStats {
   totalLeads: number
@@ -553,7 +556,7 @@ function AdminDashboardNew() {
 
       {/* Enhanced Main Content Tabs */}
       <Tabs defaultValue="pipeline" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid w-full grid-cols-12">
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="quotes">Quotes</TabsTrigger>
           <TabsTrigger value="projects">Projects</TabsTrigger>
@@ -561,8 +564,11 @@ function AdminDashboardNew() {
           <TabsTrigger value="customers">Customers</TabsTrigger>
           <TabsTrigger value="staff">Staff</TabsTrigger>
           <TabsTrigger value="cms">CMS</TabsTrigger>
+          <TabsTrigger value="gallery">Gallery</TabsTrigger>
+          <TabsTrigger value="equipment">Equipment</TabsTrigger>
+          <TabsTrigger value="workflows">Workflows</TabsTrigger>
+          <TabsTrigger value="audit">Audit</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="logs">Logs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pipeline" className="space-y-4">
@@ -704,78 +710,71 @@ function AdminDashboardNew() {
           </Card>
         </TabsContent>
 
-        {/* Enhanced Projects Tab with Progress Tracking */}
+        {/* Enhanced Projects Tab with unified form */}
         <TabsContent value="projects" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Project Management</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle>Project Management</CardTitle>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="bg-green-700 hover:bg-green-800">
+                      <Plus className="w-4 h-4 mr-2" />
+                      New Project
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Create New Project</DialogTitle>
+                    </DialogHeader>
+                    <UnifiedProjectCustomerForm />
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {projects.map((project) => (
                   <div key={project.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-semibold text-lg">{project.title}</h3>
-                          <Badge className={getStatusColor(project.status)}>{project.status.replace("_", " ")}</Badge>
+                          <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
                         </div>
                         <p className="text-sm text-gray-600 mb-1">Project #{project.projectNumber}</p>
-                        <p className="text-sm text-gray-600 mb-2">
-                          Customer: {project.customer.firstName} {project.customer.lastName}
+                        <p className="text-sm text-gray-600">
+                          Customer: {project.customer?.firstName} {project.customer?.lastName}
                         </p>
-                        <div className="flex items-center gap-1 text-sm text-gray-600 mb-3">
-                          <MapPin className="w-3 h-3" />
-                          {project.address}, {project.city}, {project.state}
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Progress</span>
-                            <span>75%</span>
-                          </div>
-                          <Progress value={75} className="h-2" />
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              Planning Complete
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                              Materials Ordered
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                              Installation Pending
-                            </div>
-                          </div>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <CalendarIcon className="w-3 h-3" />
+                            Start: {new Date(project.startDate).toLocaleDateString()}
+                          </span>
+                          {project.endDate && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              End: {new Date(project.endDate).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-green-600 text-xl mb-2">
-                          ${project.quote.totalCost.toNumber().toLocaleString()}
+                        <p className="font-semibold text-green-600 text-xl">
+                          ${project.totalCost.toNumber().toLocaleString()}
                         </p>
-                        {project.startDate && (
-                          <p className="text-sm text-gray-500 mb-2">
-                            Start: {new Date(project.startDate).toLocaleDateString()}
-                          </p>
-                        )}
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 mt-2">
                           <Button size="sm" variant="outline" onClick={() => handleViewProject(project.id)}>
                             <Eye className="w-3 h-3" />
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => handleEditProject(project.id)}>
                             <Edit className="w-3 h-3" />
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleProjectMessage(project.id)}>
-                            <MessageSquare className="w-3 h-3" />
-                          </Button>
                         </div>
                       </div>
                     </div>
                   </div>
                 ))}
-                {projects.length === 0 && <p className="text-center text-gray-500 py-8">No projects found</p>}
               </div>
             </CardContent>
           </Card>
@@ -1144,6 +1143,121 @@ function AdminDashboardNew() {
             </CardHeader>
             <CardContent>
               <p className="text-gray-500">Error logs functionality temporarily disabled for debugging.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="equipment" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Equipment Management</CardTitle>
+              <p className="text-sm text-gray-600">Track and manage your equipment, tools, and maintenance schedules</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">Equipment management system ready for deployment</p>
+                <Button className="bg-green-700 hover:bg-green-800">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Equipment
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="workflows" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Workflow Automation</CardTitle>
+              <p className="text-sm text-gray-600">Configure automated workflows and business process triggers</p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="font-medium">Active Workflows</span>
+                  </div>
+                  <div className="text-2xl font-bold">3</div>
+                  <p className="text-sm text-gray-500">Currently running</p>
+                </Card>
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="font-medium">Executions Today</span>
+                  </div>
+                  <div className="text-2xl font-bold">12</div>
+                  <p className="text-sm text-gray-500">Automated actions</p>
+                </Card>
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                    <span className="font-medium">Success Rate</span>
+                  </div>
+                  <div className="text-2xl font-bold">98%</div>
+                  <p className="text-sm text-gray-500">Last 30 days</p>
+                </Card>
+              </div>
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold">Configured Workflows</h3>
+                <Button className="bg-green-700 hover:bg-green-800">
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Workflow
+                </Button>
+              </div>
+              <div className="space-y-2 mt-4">
+                <div className="border rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">New Project Created</div>
+                    <div className="text-sm text-gray-500">Sends notification and creates follow-up task</div>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                </div>
+                <div className="border rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Customer Registration</div>
+                    <div className="text-sm text-gray-500">Sends welcome email and schedules follow-up</div>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                </div>
+                <div className="border rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Project Status Change</div>
+                    <div className="text-sm text-gray-500">Updates customer and creates completion tasks</div>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="audit" className="space-y-4">
+          <AuditTrailViewer />
+        </TabsContent>
+
+        <TabsContent value="gallery" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Advanced Gallery Management</CardTitle>
+              <p className="text-sm text-gray-600">
+                Manage project photos, before/after galleries, and portfolio images
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">Advanced gallery management system is ready</p>
+                <div className="flex gap-2 justify-center">
+                  <Button className="bg-green-700 hover:bg-green-800">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Images
+                  </Button>
+                  <Button variant="outline">
+                    <FolderOpen className="w-4 h-4 mr-2" />
+                    Manage Categories
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

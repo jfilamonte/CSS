@@ -62,32 +62,43 @@ export default function CMSPage() {
 
   const loadContent = async () => {
     try {
-      // Load content from database or use defaults
-      console.log("Loading CMS content...")
+      const response = await fetch("/api/admin/cms")
+      if (response.ok) {
+        const data = await response.json()
+        setContent(data.content)
+      } else {
+        console.error("Failed to load CMS content")
+      }
     } catch (error) {
       console.error("Error loading content:", error)
     }
   }
 
   const handleSave = async () => {
-    if (saving) return // Prevent multiple submissions
+    if (saving) return
 
     setSaving(true)
     try {
-      console.log("Saving CMS content:", content)
-
-      // Use setTimeout to make this non-blocking
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      // Show success toast instead of blocking alert
-      toast({
-        title: "Success",
-        description: "Content saved successfully!",
-        variant: "default",
+      const response = await fetch("/api/admin/cms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(content),
       })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Content saved successfully!",
+          variant: "default",
+        })
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to save content")
+      }
     } catch (error) {
       console.error("Error saving content:", error)
-      // Show error toast instead of blocking alert
       toast({
         title: "Error",
         description: "Failed to save content. Please try again.",

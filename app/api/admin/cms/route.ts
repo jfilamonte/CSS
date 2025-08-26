@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
 
@@ -19,20 +19,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const { data: customers, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("role", "customer")
-      .order("created_at", { ascending: false })
+    const { data: content, error } = await supabase.from("cms_content").select("*").single()
 
-    if (error) {
-      console.error("Error fetching customers:", error)
-      return NextResponse.json({ error: "Failed to fetch customers" }, { status: 500 })
+    if (error && error.code !== "PGRST116") {
+      // Not found is OK
+      console.error("Error fetching CMS content:", error)
+      return NextResponse.json({ error: "Failed to fetch content" }, { status: 500 })
     }
 
-    return NextResponse.json(customers || [])
+    return NextResponse.json({
+      content: content || {
+        hero_title: "",
+        hero_subtitle: "",
+        about_text: "",
+        services_text: "",
+        contact_info: "",
+      },
+    })
   } catch (error) {
-    console.error("Customers API error:", error)
+    console.error("CMS GET error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -56,37 +61,31 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { email, name, phone, address, company } = body
+    const { hero_title, hero_subtitle, about_text, services_text, contact_info } = body
 
-    // Validate required fields
-    if (!email || !name) {
-      return NextResponse.json({ error: "Email and name are required" }, { status: 400 })
-    }
-
-    // Create customer in Supabase
-    const { data: customer, error } = await supabase
-      .from("users")
-      .insert({
-        email,
-        name,
-        phone,
-        address,
-        company,
-        role: "customer",
-        created_at: new Date().toISOString(),
+    const { data, error } = await supabase
+      .from("cms_content")
+      .upsert({
+        id: 1, // Single row for CMS content
+        hero_title,
+        hero_subtitle,
+        about_text,
+        services_text,
+        contact_info,
         updated_at: new Date().toISOString(),
+        updated_by: user.id,
       })
       .select()
       .single()
 
     if (error) {
-      console.error("Error creating customer:", error)
-      return NextResponse.json({ error: "Failed to create customer" }, { status: 500 })
+      console.error("Error saving CMS content:", error)
+      return NextResponse.json({ error: "Failed to save content" }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, customer })
+    return NextResponse.json({ success: true, content: data })
   } catch (error) {
-    console.error("Customer creation error:", error)
+    console.error("CMS POST error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
