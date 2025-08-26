@@ -30,7 +30,7 @@ export default function LoginPage() {
       setError(signInError.message)
     } else {
       console.log("[v0] Login successful, redirecting to admin")
-      router.push("/admin")
+      router.push("/admin-new") // Updated from /admin to /admin-new
     }
   }
 

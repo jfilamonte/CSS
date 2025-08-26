@@ -62,7 +62,9 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6">
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/admin">
+        <Link href="/admin-new">
+          {" "}
+          {/* Updated from /admin to /admin-new */}
           <Button variant="outline" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Admin

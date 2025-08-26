@@ -131,7 +131,9 @@ export default function UserManagementPage() {
                 </div>
               </DialogContent>
             </Dialog>
-            <Button onClick={() => router.push("/admin")} variant="outline">
+            <Button onClick={() => router.push("/admin-new")} variant="outline">
+              {" "}
+              {/* Updated from /admin to /admin-new */}
               Back to Dashboard
             </Button>
           </div>

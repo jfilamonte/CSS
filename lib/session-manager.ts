@@ -36,7 +36,7 @@ export class EnterpriseSessionManager {
 
   async validateServerSession(request?: Request): Promise<SessionState> {
     try {
-      const supabase = await createClient()
+      const supabase = createClient()
       const {
         data: { user },
         error: authError,

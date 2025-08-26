@@ -52,7 +52,7 @@ export default function QuotesPage() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Quote Management</h1>
           <button
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push("/admin-new")} // Updated from /admin to /admin-new
             className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
           >
             Back to Dashboard

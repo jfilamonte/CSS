@@ -38,7 +38,9 @@ export default function ContentManagementPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Content Management</h1>
-          <Button onClick={() => router.push("/admin")} variant="outline">
+          <Button onClick={() => router.push("/admin-new")} variant="outline">
+            {" "}
+            {/* Updated from /admin to /admin-new */}
             Back to Dashboard
           </Button>
         </div>

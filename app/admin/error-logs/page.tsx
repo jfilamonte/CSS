@@ -109,7 +109,9 @@ export default function ErrorLogsPage() {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center py-6">
-            <Button variant="ghost" onClick={() => router.push("/admin")} className="mr-4">
+            <Button variant="ghost" onClick={() => router.push("/admin-new")} className="mr-4">
+              {" "}
+              {/* Updated from /admin to /admin-new */}
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Admin
             </Button>

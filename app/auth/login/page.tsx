@@ -51,7 +51,7 @@ export default function LoginPage() {
 
         // Redirect based on role
         if (userRole === "admin" || userRole === "ADMIN") {
-          router.push("/admin")
+          router.push("/admin-new") // Updated from /admin to /admin-new
         } else if (userRole === "staff" || userRole === "STAFF") {
           router.push("/sales-dashboard")
         } else {
