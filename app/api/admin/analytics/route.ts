@@ -27,15 +27,40 @@ export async function GET(request: NextRequest) {
     // Calculate conversion rate
     const conversionRate = totalQuotes && totalProjects ? Math.round((totalProjects / totalQuotes) * 100) : 0
 
-    // Get monthly data (simplified)
-    const monthlyData = [
-      { month: "Jan", quotes: 12, projects: 8, revenue: 45000 },
-      { month: "Feb", quotes: 15, projects: 10, revenue: 52000 },
-      { month: "Mar", quotes: 18, projects: 12, revenue: 68000 },
-      { month: "Apr", quotes: 22, projects: 15, revenue: 75000 },
-      { month: "May", quotes: 25, projects: 18, revenue: 82000 },
-      { month: "Jun", quotes: 20, projects: 14, revenue: 71000 },
-    ]
+    const monthlyData = []
+    const currentDate = new Date()
+
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
+      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0)
+
+      const [{ count: monthQuotes }, { count: monthProjects }, { data: monthEstimates }] = await Promise.all([
+        supabase
+          .from("quotes")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", monthStart.toISOString())
+          .lte("created_at", monthEnd.toISOString()),
+        supabase
+          .from("projects")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", monthStart.toISOString())
+          .lte("created_at", monthEnd.toISOString()),
+        supabase
+          .from("estimates")
+          .select("total_amount")
+          .gte("created_at", monthStart.toISOString())
+          .lte("created_at", monthEnd.toISOString()),
+      ])
+
+      const monthRevenue = monthEstimates?.reduce((sum, est) => sum + (est.total_amount || 0), 0) || 0
+
+      monthlyData.push({
+        month: monthStart.toLocaleDateString("en-US", { month: "short" }),
+        quotes: monthQuotes || 0,
+        projects: monthProjects || 0,
+        revenue: monthRevenue,
+      })
+    }
 
     // Get status breakdown
     const { data: quoteStatuses } = await supabase.from("quotes").select("status")

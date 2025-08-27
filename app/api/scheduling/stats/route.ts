@@ -68,11 +68,15 @@ export async function GET(request: NextRequest) {
           .eq("is_read", false),
       ])
 
-    // Calculate available slots (simplified - would be more complex in real implementation)
-    const availableSlots = 24 // Placeholder
+    // Calculate available slots based on business hours and existing appointments
+    const businessHoursPerDay = 8 // 8 AM to 4 PM
+    const workingDaysThisWeek = 5
+    const totalSlotsThisWeek = businessHoursPerDay * workingDaysThisWeek
+    const bookedSlotsThisWeek = weekAppointments.data?.length || 0
+    const availableSlots = Math.max(0, totalSlotsThisWeek - bookedSlotsThisWeek)
 
-    // Calculate team utilization (simplified)
-    const teamUtilization = 75 // Placeholder
+    // Calculate team utilization based on actual appointments vs capacity
+    const teamUtilization = totalSlotsThisWeek > 0 ? Math.round((bookedSlotsThisWeek / totalSlotsThisWeek) * 100) : 0
 
     // Count unique active chats
     const uniqueChats = new Set()

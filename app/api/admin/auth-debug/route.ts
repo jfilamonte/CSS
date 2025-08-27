@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log("[v0] Auth Debug API - Starting diagnostic")
 
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Get the current user from session
     const {

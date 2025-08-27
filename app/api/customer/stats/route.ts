@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { db } from "@/lib/database"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,10 +31,19 @@ export async function GET(request: NextRequest) {
     // Calculate total investment from all quotes/projects
     const totalInvestment = projects.reduce((sum, project) => sum + project.quote.totalCost.toNumber(), 0)
 
+    const supabase = await createClient()
+
+    const { count: upcomingAppointments } = await supabase
+      .from("appointments")
+      .select("*", { count: "exact", head: true })
+      .eq("customer_id", user.id)
+      .gte("scheduled_date", new Date().toISOString())
+      .in("status", ["scheduled", "confirmed"])
+
     const stats = {
       activeQuotes,
       activeProjects,
-      upcomingAppointments: 0, // TODO: Implement appointments
+      upcomingAppointments: upcomingAppointments || 0,
       totalInvestment,
     }
 
