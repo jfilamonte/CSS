@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     console.log("[v0] Site settings API - GET request started")
 
     const supabase = await createClient()
+    console.log("[v0] Supabase client created successfully")
 
     const cookieStore = cookies()
     // const supabase = createClient(cookieStore)
@@ -22,10 +23,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get user profile to check role
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+    const { data: userRecord } = await supabase.from("users").select("role").eq("id", user.id).single()
 
-    if (!profile || !["admin", "staff"].includes(profile.role)) {
+    if (!userRecord || !["admin", "staff"].includes(userRecord.role)) {
       console.log("[v0] Site settings API - Insufficient permissions")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -55,6 +55,7 @@ export async function PUT(request: NextRequest) {
     console.log("[v0] Site settings API - PUT request started")
 
     const supabase = await createClient()
+    console.log("[v0] Supabase client created successfully")
 
     const cookieStore = cookies()
     // const supabase = createClient(cookieStore)
@@ -70,10 +71,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get user profile to check role
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+    const { data: userRecord } = await supabase.from("users").select("role").eq("id", user.id).single()
 
-    if (!profile || profile.role !== "admin") {
+    if (!userRecord || userRecord.role !== "admin") {
       console.log("[v0] Site settings API - Admin access required")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }

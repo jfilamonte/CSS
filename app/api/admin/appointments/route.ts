@@ -16,14 +16,14 @@ async function requireAdmin(request: NextRequest) {
     throw new Error("Unauthorized")
   }
 
-  const { data: profile } = await supabase.from("user_profiles").select("role").eq("id", user.id).single()
+  const { data: userRecord } = await supabase.from("users").select("role").eq("id", user.id).single()
 
-  if (!profile || profile.role !== "admin") {
-    console.error("[v0] No admin profile found for user:", user.id)
+  if (!userRecord || userRecord.role !== "admin") {
+    console.error("[v0] No admin user found for user:", user.id)
     throw new Error("Unauthorized")
   }
 
-  return { ...user, role: profile.role, supabase }
+  return { ...user, role: userRecord.role, supabase }
 }
 
 export async function GET(request: NextRequest) {

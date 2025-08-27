@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     console.log("[v0] Staff API - GET request started")
 
     const supabase = await createClient()
+    console.log("[v0] Supabase client created successfully")
 
     // Get user from Supabase
     const {
@@ -18,17 +19,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get user profile to check role
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+    const { data: userRecord } = await supabase.from("users").select("role").eq("id", user.id).single()
 
-    if (!profile || !["admin", "staff"].includes(profile.role)) {
+    if (!userRecord || !["admin", "staff"].includes(userRecord.role)) {
       console.log("[v0] Staff API - Insufficient permissions")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get all staff members from profiles table
     const { data: staff, error: staffError } = await supabase
-      .from("profiles")
+      .from("users")
       .select("*")
       .in("role", ["admin", "staff"])
       .order("created_at", { ascending: false })
