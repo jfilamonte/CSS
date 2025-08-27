@@ -13,14 +13,14 @@ async function requireAdmin(request: NextRequest) {
 
   if (authError || !user) {
     console.error("[v0] Auth error or no user:", authError?.message || "No user")
-    throw new Error("Unauthorized")
+    return { error: "Unauthorized", status: 401 }
   }
 
   const { data: userRecord } = await supabase.from("users").select("role").eq("id", user.id).single()
 
   if (!userRecord || userRecord.role !== "admin") {
     console.error("[v0] No admin user found for user:", user.id)
-    throw new Error("Unauthorized")
+    return { error: "Unauthorized", status: 401 }
   }
 
   return { ...user, role: userRecord.role, supabase }
@@ -29,7 +29,13 @@ async function requireAdmin(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     console.log("[v0] Appointments API - GET request started")
-    const { supabase } = await requireAdmin(request)
+    const adminResult = await requireAdmin(request)
+
+    if ("error" in adminResult) {
+      return NextResponse.json({ error: adminResult.error }, { status: adminResult.status })
+    }
+
+    const { supabase } = adminResult
 
     const { data: appointments, error: dbError } = await supabase
       .from("appointments")
@@ -38,40 +44,40 @@ export async function GET(request: NextRequest) {
 
     if (dbError) {
       console.error("[v0] Appointments API - Database error:", dbError)
-      throw new Error(`Database error accessing appointments table: ${dbError.message}`)
+      return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 })
     }
 
     console.log("[v0] Appointments API - Success, found", appointments?.length || 0, "appointments")
     return NextResponse.json(appointments || [])
   } catch (error) {
     console.error("[v0] Appointments API - Error:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch appointments" },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     console.log("[v0] Appointments API - POST request started")
-    const { supabase } = await requireAdmin(request)
+    const adminResult = await requireAdmin(request)
+
+    if ("error" in adminResult) {
+      return NextResponse.json({ error: adminResult.error }, { status: adminResult.status })
+    }
+
+    const { supabase } = adminResult
     const data = await request.json()
 
     const { error: insertError } = await supabase.from("appointments").insert([data])
 
     if (insertError) {
       console.error("[v0] Appointments API - Insert error:", insertError)
-      throw new Error(`Failed to create appointment: ${insertError.message}`)
+      return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 })
     }
 
     console.log("[v0] Appointments API - Appointment created:", data.title)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[v0] Appointments API - Error:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create appointment" },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -5,7 +5,32 @@ export async function GET(request: NextRequest) {
   try {
     console.log("[v0] Auth Debug API - Starting diagnostic")
 
-    const supabase = await createClient()
+    let supabase
+    try {
+      supabase = await createClient()
+      console.log("[v0] Auth Debug - Supabase client created successfully")
+    } catch (clientError) {
+      console.error("[v0] Auth Debug - Failed to create Supabase client:", clientError)
+      return NextResponse.json(
+        {
+          error: "Failed to create Supabase client",
+          details: clientError instanceof Error ? clientError.message : "Unknown client error",
+          step: "createClient()",
+        },
+        { status: 500 },
+      )
+    }
+
+    if (!supabase) {
+      console.error("[v0] Auth Debug - Supabase client is null/undefined")
+      return NextResponse.json(
+        {
+          error: "Supabase client is null",
+          step: "client validation",
+        },
+        { status: 500 },
+      )
+    }
 
     // Get the current user from session
     const {
@@ -90,11 +115,15 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("[v0] Auth Debug - Unexpected error:", error)
+    if (error instanceof Error) {
+      console.error("[v0] Auth Debug - Error stack:", error.stack)
+    }
     return NextResponse.json(
       {
         error: "Unexpected error",
         details: error instanceof Error ? error.message : "Unknown error",
         step: "try/catch block",
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )

@@ -13,14 +13,14 @@ async function requireAdmin() {
 
   if (authError || !user) {
     console.error("[v0] Auth error or no user:", authError?.message || "No user")
-    throw new Error("Unauthorized")
+    return { error: "Unauthorized", status: 401 }
   }
 
   const { data: userRecord } = await supabase.from("users").select("role").eq("id", user.id).single()
 
   if (!userRecord || userRecord.role !== "admin") {
     console.error("[v0] No admin user found for user:", user.id)
-    throw new Error("Unauthorized")
+    return { error: "Unauthorized", status: 401 }
   }
 
   return { ...user, role: userRecord.role, supabase }
@@ -29,30 +29,39 @@ async function requireAdmin() {
 export async function GET(request: NextRequest) {
   try {
     console.log("[v0] SEO Settings API - GET request started")
-    const { supabase } = await requireAdmin()
+    const adminResult = await requireAdmin()
+
+    if ("error" in adminResult) {
+      return NextResponse.json({ error: adminResult.error }, { status: adminResult.status })
+    }
+
+    const { supabase } = adminResult
 
     const { data: seoSettings, error: dbError } = await supabase.from("seo_settings").select("*").single()
 
     if (dbError) {
       console.error("[v0] SEO Settings API - Database error:", dbError)
-      throw new Error(`Database error accessing seo_settings table: ${dbError.message}`)
+      return NextResponse.json({ error: "Failed to fetch SEO settings" }, { status: 500 })
     }
 
     console.log("[v0] SEO Settings API - Success")
     return NextResponse.json(seoSettings || {})
   } catch (error) {
     console.error("[v0] SEO Settings API - Error:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch SEO settings" },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
     console.log("[v0] SEO Settings API - PUT request started")
-    const { supabase } = await requireAdmin()
+    const adminResult = await requireAdmin()
+
+    if ("error" in adminResult) {
+      return NextResponse.json({ error: adminResult.error }, { status: adminResult.status })
+    }
+
+    const { supabase } = adminResult
     const data = await request.json()
 
     const { data: updatedSettings, error: updateError } = await supabase
@@ -63,16 +72,13 @@ export async function PUT(request: NextRequest) {
 
     if (updateError) {
       console.error("[v0] SEO Settings API - Update error:", updateError)
-      throw new Error(`Failed to update SEO settings: ${updateError.message}`)
+      return NextResponse.json({ error: "Failed to update SEO settings" }, { status: 500 })
     }
 
     console.log("[v0] SEO Settings API - Settings updated:", Object.keys(data).length, "fields")
     return NextResponse.json(updatedSettings || data)
   } catch (error) {
     console.error("[v0] SEO Settings API - Error:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update SEO settings" },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
