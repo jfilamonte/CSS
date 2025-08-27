@@ -16,11 +16,16 @@ async function requireAdmin() {
     return { error: "Unauthorized", status: 401 }
   }
 
-  const { data: userRecord } = await supabase.from("users").select("role").eq("id", user.id).single()
+  const { data: userRecord, error: roleError } = await supabase.from("users").select("role").eq("id", user.id).single()
+
+  if (roleError) {
+    console.error("[v0] Role lookup error:", roleError.message)
+    return { error: "Authentication failed", status: 401 }
+  }
 
   if (!userRecord || userRecord.role !== "admin") {
     console.error("[v0] No admin user found for user:", user.id)
-    return { error: "Unauthorized", status: 401 }
+    return { error: "Insufficient permissions", status: 403 }
   }
 
   return { ...user, role: userRecord.role, supabase }
