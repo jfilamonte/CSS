@@ -141,10 +141,38 @@ function AdminDashboardNew({ defaultTab = "pipeline" }: AdminDashboardNewProps =
   const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false)
   const [showAddStaffModal, setShowAddStaffModal] = useState(false)
   const [activeTab, setActiveTab] = useState(defaultTab)
+  const [cmsContent, setCmsContent] = useState({
+    hero_title: "",
+    hero_subtitle: "",
+    about_text: "",
+    services_text: "",
+    contact_info: "",
+  })
 
   useEffect(() => {
     loadDashboardData()
+    loadCmsContent() // Load CMS content on component mount
   }, [])
+
+  const loadCmsContent = async () => {
+    try {
+      const response = await fetch("/api/admin/cms")
+      if (response.ok) {
+        const data = await response.json()
+        setCmsContent(
+          data.content || {
+            hero_title: "",
+            hero_subtitle: "",
+            about_text: "",
+            services_text: "",
+            contact_info: "",
+          },
+        )
+      }
+    } catch (error) {
+      console.error("Error loading CMS content:", error)
+    }
+  }
 
   const loadDashboardData = async () => {
     try {
@@ -162,12 +190,30 @@ function AdminDashboardNew({ defaultTab = "pipeline" }: AdminDashboardNewProps =
         ])
 
       if (statsRes.ok) setStats(await statsRes.json())
-      if (leadsRes.ok) setLeads(await leadsRes.json())
-      if (quotesRes.ok) setQuotes(await quotesRes.json())
-      if (projectsRes.ok) setProjects(await projectsRes.json())
-      if (customersRes.ok) setCustomers(await customersRes.json())
-      if (staffRes.ok) setStaff(await staffRes.json())
-      if (appointmentsRes.ok) setAppointments(await appointmentsRes.json())
+      if (leadsRes.ok) {
+        const leadsData = await leadsRes.json()
+        setLeads(Array.isArray(leadsData) ? leadsData : [])
+      }
+      if (quotesRes.ok) {
+        const quotesData = await quotesRes.json()
+        setQuotes(Array.isArray(quotesData) ? quotesData : [])
+      }
+      if (projectsRes.ok) {
+        const projectsData = await projectsRes.json()
+        setProjects(Array.isArray(projectsData) ? projectsData : [])
+      }
+      if (customersRes.ok) {
+        const customersData = await customersRes.json()
+        setCustomers(Array.isArray(customersData) ? customersData : [])
+      }
+      if (staffRes.ok) {
+        const staffData = await staffRes.json()
+        setStaff(Array.isArray(staffData) ? staffData : [])
+      }
+      if (appointmentsRes.ok) {
+        const appointmentsData = await appointmentsRes.json()
+        setAppointments(Array.isArray(appointmentsData) ? appointmentsData : [])
+      }
       if (siteRes.ok) setSiteSettings(await siteRes.json())
       if (seoRes.ok) setSeoSettings(await seoRes.json())
     } catch (error) {
@@ -331,16 +377,52 @@ function AdminDashboardNew({ defaultTab = "pipeline" }: AdminDashboardNewProps =
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          heroTitle: "Professional Epoxy Flooring Solutions",
-          heroSubtitle: "Transform your space with durable, beautiful epoxy floors",
-          services: ["Garage Floor Coatings", "Commercial Flooring", "Decorative Concrete"],
+          hero_title: cmsContent.hero_title,
+          hero_subtitle: cmsContent.hero_subtitle,
+          about_text: cmsContent.about_text,
+          services_text: cmsContent.services_text,
+          contact_info: cmsContent.contact_info,
         }),
       })
       if (response.ok) {
         alert("Content updated successfully")
+      } else {
+        const errorData = await response.text()
+        console.error("CMS update error:", errorData)
+        alert("Error updating content: " + errorData)
       }
     } catch (error) {
       console.error("Error updating content:", error)
+      alert("Error updating content")
+    }
+  }
+
+  const handleGalleryImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    const formData = new FormData()
+    Array.from(files).forEach((file) => {
+      formData.append("files", file)
+    })
+
+    try {
+      const response = await fetch("/api/admin/gallery/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (response.ok) {
+        alert("Images uploaded successfully")
+        // Refresh gallery data if needed
+      } else {
+        const errorData = await response.text()
+        console.error("Gallery upload error:", errorData)
+        alert("Error uploading images: " + errorData)
+      }
+    } catch (error) {
+      console.error("Error uploading images:", error)
+      alert("Error uploading images")
     }
   }
 
@@ -443,7 +525,9 @@ function AdminDashboardNew({ defaultTab = "pipeline" }: AdminDashboardNewProps =
                               onDragStart={(e) => handleDragStart(e, lead.id)}
                               className="bg-white p-3 rounded border cursor-move hover:shadow-md transition-shadow"
                             >
-                              <div className="font-medium text-sm">{lead.fullName}</div>
+                              <div className="font-medium text-sm">
+                                {lead?.fullName || lead?.firstName + " " + lead?.lastName || "Unknown Customer"}
+                              </div>
                               <div className="text-xs text-gray-600">{lead.projectType}</div>
                               <div className="text-xs text-gray-500">{lead.squareFootage} sq ft</div>
                               <div className="flex justify-between items-center mt-2">
@@ -513,7 +597,11 @@ function AdminDashboardNew({ defaultTab = "pipeline" }: AdminDashboardNewProps =
                           </div>
                           <p className="text-sm text-gray-600 mb-1">Quote #{quote.quoteNumber}</p>
                           <p className="text-sm text-gray-600">
-                            Customer: {quote.lead.fullName} • {quote.lead.email}
+                            Customer:{" "}
+                            {quote.lead?.fullName ||
+                              quote.lead?.firstName + " " + quote.lead?.lastName ||
+                              "Unknown Customer"}{" "}
+                            • {quote.lead?.email || "No email"}
                           </p>
                           <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                             <span className="flex items-center gap-1">
@@ -528,7 +616,7 @@ function AdminDashboardNew({ defaultTab = "pipeline" }: AdminDashboardNewProps =
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-green-600 text-xl">
-                            ${quote.totalCost.toNumber().toLocaleString()}
+                            ${quote.totalCost?.toNumber?.() ? quote.totalCost.toNumber().toLocaleString() : "0"}
                           </p>
                           <div className="flex gap-1 mt-2">
                             <Button size="sm" variant="outline" onClick={() => handleViewQuote(quote.id)}>
@@ -602,7 +690,7 @@ function AdminDashboardNew({ defaultTab = "pipeline" }: AdminDashboardNewProps =
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-green-600 text-xl">
-                            ${project.totalCost.toNumber().toLocaleString()}
+                            ${project.totalCost?.toNumber?.() ? project.totalCost.toNumber().toLocaleString() : "0"}
                           </p>
                           <div className="flex gap-1 mt-2">
                             <Button size="sm" variant="outline" onClick={() => handleViewProject(project.id)}>
@@ -839,19 +927,43 @@ function AdminDashboardNew({ defaultTab = "pipeline" }: AdminDashboardNewProps =
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Homepage Hero Title</Label>
-                    <Input placeholder="Professional Epoxy Flooring Solutions" />
+                    <Input
+                      placeholder="Professional Epoxy Flooring Solutions"
+                      value={cmsContent.hero_title}
+                      onChange={(e) => setCmsContent({ ...cmsContent, hero_title: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Hero Subtitle</Label>
-                    <Textarea placeholder="Transform your space with durable, beautiful epoxy floors" />
+                    <Textarea
+                      placeholder="Transform your space with durable, beautiful epoxy floors"
+                      value={cmsContent.hero_subtitle}
+                      onChange={(e) => setCmsContent({ ...cmsContent, hero_subtitle: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Services</Label>
-                    <div className="space-y-2">
-                      <Input placeholder="Garage Floor Coatings" />
-                      <Input placeholder="Commercial Flooring" />
-                      <Input placeholder="Decorative Concrete" />
-                    </div>
+                    <Label>About Text</Label>
+                    <Textarea
+                      placeholder="About our company and services..."
+                      value={cmsContent.about_text}
+                      onChange={(e) => setCmsContent({ ...cmsContent, about_text: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Services Text</Label>
+                    <Textarea
+                      placeholder="Description of our services..."
+                      value={cmsContent.services_text}
+                      onChange={(e) => setCmsContent({ ...cmsContent, services_text: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Contact Information</Label>
+                    <Textarea
+                      placeholder="Contact details and information..."
+                      value={cmsContent.contact_info}
+                      onChange={(e) => setCmsContent({ ...cmsContent, contact_info: e.target.value })}
+                    />
                   </div>
                   <Button className="w-full bg-green-700 hover:bg-green-800" onClick={handleUpdateContent}>
                     Update Content
@@ -872,10 +984,19 @@ function AdminDashboardNew({ defaultTab = "pipeline" }: AdminDashboardNewProps =
                       <Upload className="w-8 h-8 text-gray-400" />
                     </div>
                   </div>
-                  <Button variant="outline" className="w-full bg-transparent">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Images
-                  </Button>
+                  <label className="cursor-pointer">
+                    <Button variant="outline" className="w-full bg-transparent">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Images
+                    </Button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleGalleryImageUpload}
+                      className="hidden"
+                    />
+                  </label>
                 </CardContent>
               </Card>
             </div>

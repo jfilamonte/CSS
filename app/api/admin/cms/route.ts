@@ -19,7 +19,7 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const { data: content, error } = await supabase.from("cms_content").select("*").single()
+    const { data: content, error } = await supabase.from("cms_content").select("*").eq("page", "homepage").single()
 
     if (error && error.code !== "PGRST116") {
       // Not found is OK
@@ -27,13 +27,14 @@ export async function GET() {
       return NextResponse.json({ error: "Failed to fetch content" }, { status: 500 })
     }
 
+    const contentData = content?.content || {}
     return NextResponse.json({
-      content: content || {
-        hero_title: "",
-        hero_subtitle: "",
-        about_text: "",
-        services_text: "",
-        contact_info: "",
+      content: {
+        hero_title: contentData.hero_title || "",
+        hero_subtitle: contentData.hero_subtitle || "",
+        about_text: contentData.about_text || "",
+        services_text: contentData.services_text || "",
+        contact_info: contentData.contact_info || "",
       },
     })
   } catch (error) {
@@ -65,16 +66,23 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("cms_content")
-      .upsert({
-        id: 1, // Single row for CMS content
-        hero_title,
-        hero_subtitle,
-        about_text,
-        services_text,
-        contact_info,
-        updated_at: new Date().toISOString(),
-        updated_by: user.id,
-      })
+      .upsert(
+        {
+          page: "homepage", // Use page identifier instead of numeric ID
+          content: {
+            hero_title,
+            hero_subtitle,
+            about_text,
+            services_text,
+            contact_info,
+          },
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+        },
+        {
+          onConflict: "page",
+        },
+      )
       .select()
       .single()
 

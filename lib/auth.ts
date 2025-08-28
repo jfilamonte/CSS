@@ -12,7 +12,7 @@ export interface User {
 export async function getCurrentUser(): Promise<User | null> {
   try {
     console.log("[v0] Getting current user...")
-    const supabase = createClient()
+    const supabase = await createClient()
     const {
       data: { user: authUser },
       error: authError,
@@ -47,7 +47,7 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function signIn(email: string, password: string, ip?: string, userAgent?: string) {
   try {
     console.log("[v0] Attempting sign in for:", email)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -81,7 +81,7 @@ export async function signIn(email: string, password: string, ip?: string, userA
 }
 
 export async function signOut() {
-  const supabase = createClient()
+  const supabase = await createClient()
   await supabase.auth.signOut()
 }
 
@@ -95,7 +95,7 @@ export async function registerUser(userData: {
 }) {
   try {
     console.log("[v0] Registering user:", userData.email)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
@@ -166,7 +166,7 @@ export async function verifyAuth(allowedRoles?: string[]): Promise<User | null> 
 
 export async function refreshSession(): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data, error } = await supabase.auth.refreshSession()
 
     if (error) {

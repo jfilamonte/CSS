@@ -133,7 +133,7 @@ export default function AdminSiteManager() {
   }
 
   const getSetting = (key: string) => {
-    return settings.find((s) => s.key === key)?.value || ""
+    return settings.find((s) => s.key === key)?.value ?? ""
   }
 
   if (loading) {

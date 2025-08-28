@@ -82,6 +82,9 @@ export default function QuotesPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date
                   </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -113,6 +116,14 @@ export default function QuotesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(quote.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => router.push(`/admin/quotes/${quote.id}/edit`)}
+                        className="text-green-600 hover:text-green-900 mr-4"
+                      >
+                        Edit
+                      </button>
                     </td>
                   </tr>
                 ))}

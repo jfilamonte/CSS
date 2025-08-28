@@ -103,24 +103,36 @@ function EquipmentManagementDashboard() {
       const equipmentResponse = await fetch("/api/admin/equipment")
       if (equipmentResponse.ok) {
         const equipmentData = await equipmentResponse.json()
-        setEquipment(equipmentData)
+        setEquipment(Array.isArray(equipmentData) ? equipmentData : [])
+      } else {
+        console.error("Equipment API returned:", equipmentResponse.status, equipmentResponse.statusText)
+        setEquipment([])
       }
 
       // Load maintenance records
       const maintenanceResponse = await fetch("/api/admin/equipment/maintenance")
       if (maintenanceResponse.ok) {
         const maintenanceData = await maintenanceResponse.json()
-        setMaintenanceRecords(maintenanceData)
+        setMaintenanceRecords(Array.isArray(maintenanceData) ? maintenanceData : [])
+      } else {
+        console.error("Maintenance API returned:", maintenanceResponse.status, maintenanceResponse.statusText)
+        setMaintenanceRecords([])
       }
 
       // Load maintenance alerts
       const alertsResponse = await fetch("/api/admin/equipment/alerts")
       if (alertsResponse.ok) {
         const alertsData = await alertsResponse.json()
-        setMaintenanceAlerts(alertsData)
+        setMaintenanceAlerts(Array.isArray(alertsData) ? alertsData : [])
+      } else {
+        console.error("Alerts API returned:", alertsResponse.status, alertsResponse.statusText)
+        setMaintenanceAlerts([])
       }
     } catch (error) {
       console.error("Error loading equipment data:", error)
+      setEquipment([])
+      setMaintenanceRecords([])
+      setMaintenanceAlerts([])
     } finally {
       setLoading(false)
     }
@@ -328,112 +340,158 @@ function EquipmentManagementDashboard() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Add New Equipment</DialogTitle>
-                      <DialogDescription>Enter equipment details for asset tracking</DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleAddEquipment} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="name">Equipment Name</Label>
-                          <Input
-                            id="name"
-                            value={equipmentForm.name}
-                            onChange={(e) => setEquipmentForm({ ...equipmentForm, name: e.target.value })}
-                            required
-                          />
+                    <div className="bg-white text-gray-900 p-6 rounded-lg">
+                      <DialogHeader>
+                        <DialogTitle className="text-gray-900 text-xl font-semibold">Add New Equipment</DialogTitle>
+                        <DialogDescription className="text-gray-600">
+                          Enter equipment details for asset tracking
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleAddEquipment} className="space-y-4 mt-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="name" className="text-gray-700 font-medium">
+                              Equipment Name
+                            </Label>
+                            <Input
+                              id="name"
+                              className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                              value={equipmentForm.name}
+                              onChange={(e) => setEquipmentForm({ ...equipmentForm, name: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="category" className="text-gray-700 font-medium">
+                              Category
+                            </Label>
+                            <Select
+                              value={equipmentForm.category}
+                              onValueChange={(value) => setEquipmentForm({ ...equipmentForm, category: value })}
+                            >
+                              <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border-gray-300">
+                                <SelectItem value="Grinders" className="text-gray-900 hover:bg-gray-100">
+                                  Grinders
+                                </SelectItem>
+                                <SelectItem value="Mixers" className="text-gray-900 hover:bg-gray-100">
+                                  Mixers
+                                </SelectItem>
+                                <SelectItem value="Sprayers" className="text-gray-900 hover:bg-gray-100">
+                                  Sprayers
+                                </SelectItem>
+                                <SelectItem value="Compressors" className="text-gray-900 hover:bg-gray-100">
+                                  Compressors
+                                </SelectItem>
+                                <SelectItem value="Vehicles" className="text-gray-900 hover:bg-gray-100">
+                                  Vehicles
+                                </SelectItem>
+                                <SelectItem value="Tools" className="text-gray-900 hover:bg-gray-100">
+                                  Tools
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <div>
-                          <Label htmlFor="category">Category</Label>
-                          <Select
-                            value={equipmentForm.category}
-                            onValueChange={(value) => setEquipmentForm({ ...equipmentForm, category: value })}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="model" className="text-gray-700 font-medium">
+                              Model
+                            </Label>
+                            <Input
+                              id="model"
+                              className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                              value={equipmentForm.model}
+                              onChange={(e) => setEquipmentForm({ ...equipmentForm, model: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="serial_number" className="text-gray-700 font-medium">
+                              Serial Number
+                            </Label>
+                            <Input
+                              id="serial_number"
+                              className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                              value={equipmentForm.serial_number}
+                              onChange={(e) => setEquipmentForm({ ...equipmentForm, serial_number: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="purchase_date" className="text-gray-700 font-medium">
+                              Purchase Date
+                            </Label>
+                            <Input
+                              id="purchase_date"
+                              type="date"
+                              className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                              value={equipmentForm.purchase_date}
+                              onChange={(e) => setEquipmentForm({ ...equipmentForm, purchase_date: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="purchase_cost" className="text-gray-700 font-medium">
+                              Purchase Cost
+                            </Label>
+                            <Input
+                              id="purchase_cost"
+                              type="number"
+                              className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                              value={equipmentForm.purchase_cost}
+                              onChange={(e) =>
+                                setEquipmentForm({ ...equipmentForm, purchase_cost: Number(e.target.value) })
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="location" className="text-gray-700 font-medium">
+                              Location
+                            </Label>
+                            <Input
+                              id="location"
+                              className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                              value={equipmentForm.location}
+                              onChange={(e) => setEquipmentForm({ ...equipmentForm, location: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="maintenance_schedule" className="text-gray-700 font-medium">
+                              Maintenance Schedule (months)
+                            </Label>
+                            <Input
+                              id="maintenance_schedule"
+                              type="number"
+                              className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                              value={equipmentForm.maintenance_schedule_months}
+                              onChange={(e) =>
+                                setEquipmentForm({
+                                  ...equipmentForm,
+                                  maintenance_schedule_months: Number(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end space-x-2 pt-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowAddDialog(false)}
+                            className="border-gray-300 text-gray-700 hover:bg-gray-50"
                           >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Grinders">Grinders</SelectItem>
-                              <SelectItem value="Mixers">Mixers</SelectItem>
-                              <SelectItem value="Sprayers">Sprayers</SelectItem>
-                              <SelectItem value="Compressors">Compressors</SelectItem>
-                              <SelectItem value="Vehicles">Vehicles</SelectItem>
-                              <SelectItem value="Tools">Tools</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            Cancel
+                          </Button>
+                          <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700">
+                            Add Equipment
+                          </Button>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="model">Model</Label>
-                          <Input
-                            id="model"
-                            value={equipmentForm.model}
-                            onChange={(e) => setEquipmentForm({ ...equipmentForm, model: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="serial_number">Serial Number</Label>
-                          <Input
-                            id="serial_number"
-                            value={equipmentForm.serial_number}
-                            onChange={(e) => setEquipmentForm({ ...equipmentForm, serial_number: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="purchase_date">Purchase Date</Label>
-                          <Input
-                            id="purchase_date"
-                            type="date"
-                            value={equipmentForm.purchase_date}
-                            onChange={(e) => setEquipmentForm({ ...equipmentForm, purchase_date: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="purchase_cost">Purchase Cost</Label>
-                          <Input
-                            id="purchase_cost"
-                            type="number"
-                            value={equipmentForm.purchase_cost}
-                            onChange={(e) =>
-                              setEquipmentForm({ ...equipmentForm, purchase_cost: Number(e.target.value) })
-                            }
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="location">Location</Label>
-                          <Input
-                            id="location"
-                            value={equipmentForm.location}
-                            onChange={(e) => setEquipmentForm({ ...equipmentForm, location: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="maintenance_schedule">Maintenance Schedule (months)</Label>
-                          <Input
-                            id="maintenance_schedule"
-                            type="number"
-                            value={equipmentForm.maintenance_schedule_months}
-                            onChange={(e) =>
-                              setEquipmentForm({
-                                ...equipmentForm,
-                                maintenance_schedule_months: Number(e.target.value),
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
-                          Cancel
-                        </Button>
-                        <Button type="submit">Add Equipment</Button>
-                      </div>
-                    </form>
+                      </form>
+                    </div>
                   </DialogContent>
                 </Dialog>
               </div>
@@ -616,74 +674,109 @@ function EquipmentManagementDashboard() {
       {/* Maintenance Dialog */}
       <Dialog open={showMaintenanceDialog} onOpenChange={setShowMaintenanceDialog}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Record Maintenance</DialogTitle>
-            <DialogDescription>Add maintenance record for {selectedEquipment?.name}</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleMaintenanceRecord} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white text-gray-900 p-6 rounded-lg">
+            <DialogHeader>
+              <DialogTitle className="text-gray-900 text-xl font-semibold">Record Maintenance</DialogTitle>
+              <DialogDescription className="text-gray-600">
+                Add maintenance record for {selectedEquipment?.name}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleMaintenanceRecord} className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="maintenance_type" className="text-gray-700 font-medium">
+                    Maintenance Type
+                  </Label>
+                  <Select
+                    value={maintenanceForm.maintenance_type}
+                    onValueChange={(value) => setMaintenanceForm({ ...maintenanceForm, maintenance_type: value })}
+                  >
+                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-gray-300">
+                      <SelectItem value="Routine Maintenance" className="text-gray-900 hover:bg-gray-100">
+                        Routine Maintenance
+                      </SelectItem>
+                      <SelectItem value="Repair" className="text-gray-900 hover:bg-gray-100">
+                        Repair
+                      </SelectItem>
+                      <SelectItem value="Inspection" className="text-gray-900 hover:bg-gray-100">
+                        Inspection
+                      </SelectItem>
+                      <SelectItem value="Calibration" className="text-gray-900 hover:bg-gray-100">
+                        Calibration
+                      </SelectItem>
+                      <SelectItem value="Replacement" className="text-gray-900 hover:bg-gray-100">
+                        Replacement
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="cost" className="text-gray-700 font-medium">
+                    Cost
+                  </Label>
+                  <Input
+                    id="cost"
+                    type="number"
+                    className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                    value={maintenanceForm.cost}
+                    onChange={(e) => setMaintenanceForm({ ...maintenanceForm, cost: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
               <div>
-                <Label htmlFor="maintenance_type">Maintenance Type</Label>
-                <Select
-                  value={maintenanceForm.maintenance_type}
-                  onValueChange={(value) => setMaintenanceForm({ ...maintenanceForm, maintenance_type: value })}
+                <Label htmlFor="description" className="text-gray-700 font-medium">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                  value={maintenanceForm.description}
+                  onChange={(e) => setMaintenanceForm({ ...maintenanceForm, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="performed_by" className="text-gray-700 font-medium">
+                    Performed By
+                  </Label>
+                  <Input
+                    id="performed_by"
+                    className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                    value={maintenanceForm.performed_by}
+                    onChange={(e) => setMaintenanceForm({ ...maintenanceForm, performed_by: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="parts_replaced" className="text-gray-700 font-medium">
+                    Parts Replaced (comma separated)
+                  </Label>
+                  <Input
+                    id="parts_replaced"
+                    className="bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                    value={maintenanceForm.parts_replaced}
+                    onChange={(e) => setMaintenanceForm({ ...maintenanceForm, parts_replaced: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowMaintenanceDialog(false)}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Routine Maintenance">Routine Maintenance</SelectItem>
-                    <SelectItem value="Repair">Repair</SelectItem>
-                    <SelectItem value="Inspection">Inspection</SelectItem>
-                    <SelectItem value="Calibration">Calibration</SelectItem>
-                    <SelectItem value="Replacement">Replacement</SelectItem>
-                  </SelectContent>
-                </Select>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700">
+                  Record Maintenance
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="cost">Cost</Label>
-                <Input
-                  id="cost"
-                  type="number"
-                  value={maintenanceForm.cost}
-                  onChange={(e) => setMaintenanceForm({ ...maintenanceForm, cost: Number(e.target.value) })}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={maintenanceForm.description}
-                onChange={(e) => setMaintenanceForm({ ...maintenanceForm, description: e.target.value })}
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="performed_by">Performed By</Label>
-                <Input
-                  id="performed_by"
-                  value={maintenanceForm.performed_by}
-                  onChange={(e) => setMaintenanceForm({ ...maintenanceForm, performed_by: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="parts_replaced">Parts Replaced (comma separated)</Label>
-                <Input
-                  id="parts_replaced"
-                  value={maintenanceForm.parts_replaced}
-                  onChange={(e) => setMaintenanceForm({ ...maintenanceForm, parts_replaced: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setShowMaintenanceDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">Record Maintenance</Button>
-            </div>
-          </form>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ leads: transformedLeads })
+    return NextResponse.json(transformedLeads)
   } catch (error) {
     console.error("Leads API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
       created_at: newQuote.created_at,
     }
 
-    return NextResponse.json({ lead: transformedLead }, { status: 201 })
+    return NextResponse.json(transformedLead, { status: 201 })
   } catch (error) {
     console.error("Create lead API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

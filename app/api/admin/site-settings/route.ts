@@ -35,10 +35,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
-    const { data: settings, error: dbError } = await supabase.from("site_settings").select("*")
+    const { data: settings, error: dbError } = await supabase
+      .from("business_settings")
+      .select("*")
+      .eq("setting_category", "site")
 
     if (dbError) {
-      console.error("[v0] Site settings API - Database error:", dbError)
+      console.error("[v0] Site settings API - Database error:", dbError.message)
       return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 })
     }
 
@@ -91,7 +94,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Settings data required" }, { status: 400 })
     }
 
-    const { error: updateError } = await supabase.from("site_settings").upsert(settings)
+    const settingsArray = Array.isArray(settings) ? settings : [settings]
+    const settingsToUpsert = settingsArray.map((setting) => ({
+      ...setting,
+      setting_category: "site",
+      updated_at: new Date().toISOString(),
+    }))
+
+    const { error: updateError } = await supabase.from("business_settings").upsert(settingsToUpsert)
 
     if (updateError) {
       console.error("[v0] Site settings API - Update error:", updateError)

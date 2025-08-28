@@ -32,20 +32,25 @@ export async function POST(request: NextRequest) {
       access: "public",
     })
 
-    const dimensions = `${file.size} bytes`
-
-    const { data: image, error } = await supabase
-      .from("gallery_images")
+    const { data: project, error } = await supabase
+      .from("projects")
       .insert({
-        title: file.name.replace(/\.[^/.]+$/, ""), // Remove file extension
-        description: "",
-        url: blob.url,
-        category,
-        tags: [],
-        file_size: file.size,
-        dimensions,
-        uploaded_by: user.id,
-        created_at: new Date().toISOString(),
+        title: `Gallery Image - ${file.name.replace(/\.[^/.]+$/, "")}`,
+        description: "Gallery image uploaded via admin",
+        customer_id: user.id,
+        status: "gallery",
+        project_photos: [
+          {
+            id: Date.now().toString(),
+            title: file.name.replace(/\.[^/.]+$/, ""),
+            description: "",
+            url: blob.url,
+            category,
+            file_size: file.size,
+            dimensions: `${file.size} bytes`,
+            uploaded_at: new Date().toISOString(),
+          },
+        ],
       })
       .select()
       .single()
@@ -55,7 +60,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to save image" }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, image })
+    return NextResponse.json({ success: true, image: project.project_photos[0] })
   } catch (error) {
     console.error("Gallery upload error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
